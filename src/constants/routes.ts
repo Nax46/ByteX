@@ -21,7 +21,13 @@ export const ROUTES = {
   CAREER_READINESS: '/career-readiness',
   CAREERS: '/careers',
   MENTOR: '/mentor',
+  MENTOR_RECOMMENDATIONS: '/mentor/recommendations',
+  MENTOR_PROFILE: '/mentor/:mentorId',
+  MENTOR_DEMO: '/mentor/:mentorId/demo',
+  MENTOR_CHECKOUT: '/mentor/checkout',
+  MENTOR_JOURNEY: '/mentor/journey',
   SETTINGS: '/settings',
+
 
   // Admin Routes
   ADMIN: '/admin',

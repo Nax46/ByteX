@@ -64,6 +64,23 @@ const AdminSettingsPage = React.lazy(() =>
   import('@/pages/admin/settings/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage }))
 )
 
+// Route-Level Code Splitting for Mentor System
+const MentorRecommendationsPage = React.lazy(() =>
+  import('@/pages/mentor/MentorRecommendationsPage').then((m) => ({ default: m.MentorRecommendationsPage }))
+)
+const MentorProfilePage = React.lazy(() =>
+  import('@/pages/mentor/MentorProfilePage').then((m) => ({ default: m.MentorProfilePage }))
+)
+const MentorDemoPage = React.lazy(() =>
+  import('@/pages/mentor/MentorDemoPage').then((m) => ({ default: m.MentorDemoPage }))
+)
+const MentorCheckoutPage = React.lazy(() =>
+  import('@/pages/mentor/MentorCheckoutPage').then((m) => ({ default: m.MentorCheckoutPage }))
+)
+const MentorJourneyPage = React.lazy(() =>
+  import('@/pages/mentor/MentorJourneyPage').then((m) => ({ default: m.MentorJourneyPage }))
+)
+
 import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -136,6 +153,21 @@ export const AppRoutes: React.FC = () => {
         <Route path={ROUTES.CAREERS} element={<CareersPage />} />
         <Route path={ROUTES.CAREER_READINESS} element={<CareersPage />} />
         <Route path={ROUTES.MENTOR} element={<MentorPage />} />
+        <Route path={ROUTES.MENTOR_RECOMMENDATIONS} element={
+          <React.Suspense fallback={<DashboardSkeleton />}><MentorRecommendationsPage /></React.Suspense>
+        } />
+        <Route path="/mentor/:mentorId" element={
+          <React.Suspense fallback={<DashboardSkeleton />}><MentorProfilePage /></React.Suspense>
+        } />
+        <Route path="/mentor/:mentorId/demo" element={
+          <React.Suspense fallback={<DashboardSkeleton />}><MentorDemoPage /></React.Suspense>
+        } />
+        <Route path={ROUTES.MENTOR_CHECKOUT} element={
+          <React.Suspense fallback={<DashboardSkeleton />}><MentorCheckoutPage /></React.Suspense>
+        } />
+        <Route path={ROUTES.MENTOR_JOURNEY} element={
+          <React.Suspense fallback={<DashboardSkeleton />}><MentorJourneyPage /></React.Suspense>
+        } />
         <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
       </Route>
 
