@@ -96,6 +96,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, setIsCo
               key={item.to}
               to={item.to}
               title={isCollapsed ? item.label : undefined}
+              aria-label={item.label}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative',
                 isActive
@@ -127,6 +128,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, setIsCo
             onClick={() => setIsCollapsed(false)}
             className="p-2 rounded-lg text-[#626763] hover:text-[#171918] hover:bg-[#F8F7F3] cursor-pointer"
             title="Expand sidebar"
+            aria-label="Expand sidebar"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -154,6 +156,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, setIsCo
         <button
           onClick={handleLogout}
           title={isCollapsed ? 'Logout' : undefined}
+          aria-label="Log out of admin session"
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
         >
           <LogOut className="w-4 h-4 shrink-0 text-red-600" />

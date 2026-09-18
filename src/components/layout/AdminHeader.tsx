@@ -45,8 +45,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMobileMenuToggle }) 
           <Search className="w-4 h-4 text-[#8E948F] absolute left-3 pointer-events-none" />
           <input
             type="text"
+            aria-label="Search platform records, students, skills, paths, assessments"
             placeholder="Search students, skills, paths, assessments..."
-            className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg pl-9 pr-4 py-1.5 text-xs text-[#171918] placeholder-[#8E948F] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
+            className="w-full h-9 bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg pl-9 pr-4 text-xs text-[#171918] placeholder-[#8E948F] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
           />
         </div>
       </div>
@@ -66,8 +67,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMobileMenuToggle }) 
         {/* Notification Bell */}
         <button
           className="relative p-2 rounded-lg text-[#626763] hover:text-[#171918] hover:bg-[#F8F7F3] transition-colors cursor-pointer"
-          aria-label="Notifications"
-          onClick={() => alert('All platform systems nominal. No pending critical alerts.')}
+          aria-label="System Notifications: Platform nominal"
+          title="System Notifications"
         >
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#1F6B4F] ring-2 ring-white" />
@@ -77,6 +78,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMobileMenuToggle }) 
         <div className="relative">
           <button
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+            aria-expanded={profileDropdownOpen}
+            aria-haspopup="true"
+            aria-label="Open admin profile menu"
             className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-[#F8F7F3] transition-colors focus:outline-none cursor-pointer"
           >
             <Avatar
