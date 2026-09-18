@@ -5,7 +5,6 @@ import { ROUTES } from '@/constants/routes'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { SkillPathLogo } from '@/components/ui/SkillPathLogo'
 import { isValidEmail } from '@/utils/validation'
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react'
@@ -61,13 +60,6 @@ export const AdminLoginPage: React.FC = () => {
     } catch {
       // Error is set in AuthContext state
     }
-  }
-
-  const handleApplyAdminDemo = () => {
-    setEmail('admin@skillpath.demo')
-    setPassword('Admin@123')
-    clearError?.()
-    setValidationError(null)
   }
 
   return (
@@ -161,7 +153,7 @@ export const AdminLoginPage: React.FC = () => {
               </label>
 
               <span className="text-[11px] text-[#8E948F]">
-                Session duration: 24h
+                Institutional SSO
               </span>
             </div>
 
@@ -175,43 +167,16 @@ export const AdminLoginPage: React.FC = () => {
               Sign In to Admin Console
             </Button>
           </form>
-
-          {/* Quick Demo Credentials Autofill */}
-          <div className="mt-6 pt-6 border-t border-[#E5E5DF] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#171918]">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#1F6B4F]" />
-                <span>Demo Admin Persona</span>
-              </div>
-              <Badge variant="outline" size="sm" className="text-[10px] bg-[#D8E8DE]/40 text-[#1F6B4F] border-[#D8E8DE]">
-                Role: Administrator
-              </Badge>
-            </div>
-
-            <div className="p-3 rounded-lg border border-[#E5E5DF] bg-[#F8F7F3]/80 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-[#171918] truncate">Curriculum Administrator</p>
-                <p className="text-[11px] text-[#626763] font-mono truncate">admin@skillpath.demo</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleApplyAdminDemo}
-                className="shrink-0 py-1.5 px-3 text-xs font-semibold text-[#1F6B4F] bg-white border border-[#D8E8DE] rounded-md hover:bg-[#D8E8DE]/40 transition-colors cursor-pointer shadow-2xs"
-              >
-                Autofill Admin Demo
-              </button>
-            </div>
-          </div>
         </Card>
 
         {/* Footer link to return to main website */}
         <div className="text-center">
           <Link
             to={ROUTES.HOME}
-            className="inline-flex items-center gap-1.5 text-xs text-[#626763] hover:text-[#171918] transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-[#626763] hover:text-[#1F6B4F] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to SkillPath Learner Platform</span>
+            <span>Return to SkillPath Public Platform</span>
           </Link>
         </div>
       </div>

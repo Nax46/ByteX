@@ -5,10 +5,9 @@ import { ROUTES } from '@/constants/routes'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { SkillPathLogo } from '@/components/ui/SkillPathLogo'
 import { isValidEmail } from '@/utils/validation'
-import { Mail, Lock, Eye, EyeOff, AlertCircle, GraduationCap, UserCheck } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading, error, clearError } = useAuth()
@@ -46,7 +45,7 @@ export const LoginPage: React.FC = () => {
     try {
       await login({ email, password, rememberMe })
       
-      // Determine redirection by user intent & credentials
+      // Route based on role
       const normalizedEmail = email.trim().toLowerCase()
       const isAdmin = normalizedEmail === 'admin@skillpath.demo'
 
@@ -61,25 +60,18 @@ export const LoginPage: React.FC = () => {
     }
   }
 
-  const handleApplyDemoAccount = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail)
-    setPassword(demoPass)
-    clearError?.()
-    setValidationError(null)
-  }
-
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-10 bg-[#F8F7F3]">
       <div className="w-full max-w-md space-y-6 animate-fadeIn">
         {/* Header Branding */}
         <div className="text-center space-y-2">
-          <Link to={ROUTES.HOME} className="inline-flex items-center justify-center">
+          <Link to={ROUTES.HOME} className="inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F6B4F] rounded-lg">
             <SkillPathLogo size="md" />
           </Link>
           <div>
             <h2 className="font-heading text-2xl font-bold tracking-tight text-[#171918]">Welcome back</h2>
             <p className="text-xs text-[#626763] mt-1">
-              Continue your SkillPath journey.
+              Sign in to continue your personalized SkillPath journey.
             </p>
           </div>
         </div>
@@ -147,8 +139,8 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => alert('Password reset instructions will be sent to your registered email.')}
-                className="text-[#1F6B4F] hover:underline transition-colors"
+                onClick={() => alert('Password reset instructions will be sent to your registered email address.')}
+                className="text-[#1F6B4F] hover:underline transition-colors cursor-pointer"
               >
                 Forgot password?
               </button>
@@ -163,41 +155,6 @@ export const LoginPage: React.FC = () => {
               Sign In
             </Button>
           </form>
-
-          {/* Hackathon Demo Access Section */}
-          <div className="mt-6 pt-6 border-t border-[#E5E5DF] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#171918]">
-                <UserCheck className="w-3.5 h-3.5 text-[#1F6B4F]" />
-                <span>Hackathon Demo Access</span>
-              </div>
-              <Badge variant="outline" size="sm" className="text-[10px] bg-[#F8F7F3] text-[#626763]">
-                Frontend Demo
-              </Badge>
-            </div>
-
-            <div className="pt-1">
-              {/* Student Demo Button */}
-              <div className="p-3 rounded-lg border border-[#E5E5DF] bg-[#F8F7F3]/60 hover:bg-[#F8F7F3] transition-colors flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#171918]">
-                    <GraduationCap className="w-4 h-4 text-[#1F6B4F] shrink-0" />
-                    <span>Student Demo Account</span>
-                  </div>
-                  <p className="text-[11px] text-[#626763] mt-0.5 truncate font-mono">
-                    student@skillpath.demo
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleApplyDemoAccount('student@skillpath.demo', 'Student@123')}
-                  className="shrink-0 py-1.5 px-3 text-xs font-semibold text-[#1F6B4F] bg-white border border-[#D8E8DE] rounded-md hover:bg-[#D8E8DE]/40 transition-colors text-center cursor-pointer shadow-2xs"
-                >
-                  Autofill Student Demo
-                </button>
-              </div>
-            </div>
-          </div>
         </Card>
 
         {/* Footer link */}
