@@ -4,9 +4,10 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Modal } from '@/components/ui/Modal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAuth } from '@/hooks/useAuth'
 import { analyticsService } from '@/services/analyticsService'
+import { ROUTES } from '@/constants/routes'
 import {
   ShieldCheck,
   RotateCcw,
@@ -14,7 +15,6 @@ import {
   Sun,
   Database,
   CheckCircle2,
-  AlertTriangle,
 } from 'lucide-react'
 
 export const AdminSettingsPage: React.FC = () => {
@@ -59,6 +59,10 @@ export const AdminSettingsPage: React.FC = () => {
       <PageHeader
         title="Admin Settings"
         subtitle="Manage administrative profile, notification triggers, appearance preferences, and demo data state."
+        breadcrumbs={[
+          { label: 'Admin', href: ROUTES.ADMIN_DASHBOARD },
+          { label: 'Settings' },
+        ]}
         badge={
           <Badge variant="outline" className="bg-[#D8E8DE]/40 text-[#1F6B4F] border-[#D8E8DE] font-semibold text-xs">
             Platform Configuration
@@ -84,6 +88,7 @@ export const AdminSettingsPage: React.FC = () => {
           <Input
             id="admin-name"
             label="Display Name"
+            size="sm"
             value={adminName}
             onChange={(e) => setAdminName(e.target.value)}
             placeholder="SkillPath Admin"
@@ -94,6 +99,7 @@ export const AdminSettingsPage: React.FC = () => {
             id="admin-email"
             label="Email Address"
             type="email"
+            size="sm"
             value={adminEmail}
             onChange={(e) => setAdminEmail(e.target.value)}
             placeholder="admin@skillpath.demo"
@@ -122,7 +128,7 @@ export const AdminSettingsPage: React.FC = () => {
         </div>
 
         <div className="space-y-3 max-w-lg">
-          <label className="flex items-center justify-between p-3 rounded-xl border border-[#E5E5DF] bg-[#F8F7F3] cursor-pointer">
+          <label className="flex items-center justify-between p-3 rounded-xl border border-[#E5E5DF] bg-[#F8F7F3] cursor-pointer hover:bg-[#F3F2EC] transition-colors">
             <div>
               <p className="text-xs font-semibold text-[#171918]">Learner Assessment Completions</p>
               <p className="text-[11px] text-[#626763]">Receive notification when a student submits a graded benchmark test</p>
@@ -135,7 +141,7 @@ export const AdminSettingsPage: React.FC = () => {
             />
           </label>
 
-          <label className="flex items-center justify-between p-3 rounded-xl border border-[#E5E5DF] bg-[#F8F7F3] cursor-pointer">
+          <label className="flex items-center justify-between p-3 rounded-xl border border-[#E5E5DF] bg-[#F8F7F3] cursor-pointer hover:bg-[#F3F2EC] transition-colors">
             <div>
               <p className="text-xs font-semibold text-[#171918]">Cohort Track Enrollments</p>
               <p className="text-[11px] text-[#626763]">Instant alert when new students register for career roadmaps</p>
@@ -148,7 +154,7 @@ export const AdminSettingsPage: React.FC = () => {
             />
           </label>
 
-          <label className="flex items-center justify-between p-3 rounded-xl border border-[#E5E5DF] bg-[#F8F7F3] cursor-pointer">
+          <label className="flex items-center justify-between p-3 rounded-xl border border-[#E5E5DF] bg-[#F8F7F3] cursor-pointer hover:bg-[#F3F2EC] transition-colors">
             <div>
               <p className="text-xs font-semibold text-[#171918]">Weekly Executive Telemetry Digest</p>
               <p className="text-[11px] text-[#626763]">Summarized email digest of student progress and engagement</p>
@@ -172,8 +178,8 @@ export const AdminSettingsPage: React.FC = () => {
 
         <div className="p-3.5 rounded-xl border border-[#E5E5DF] bg-[#F8F7F3] flex items-center justify-between max-w-lg">
           <div className="space-y-0.5">
-            <span className="text-xs font-semibold text-[#171918]">Active Theme: SkillPath Light</span>
-            <p className="text-[11px] text-[#626763]">Professional, clean canvas designed for student and educator readability.</p>
+            <span className="text-xs font-semibold text-[#171918]">Active Theme: SkillPath Warm Canvas</span>
+            <p className="text-[11px] text-[#626763]">Engineered for educator readability and long-duration analytical workflows.</p>
           </div>
           <Badge variant="forest" size="sm">
             Default
@@ -205,37 +211,18 @@ export const AdminSettingsPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Confirmation Modal */}
-      <Modal
+      {/* Confirm Reset Dialog */}
+      <ConfirmDialog
         isOpen={isResetModalOpen}
         onClose={() => setIsResetModalOpen(false)}
+        onConfirm={handleConfirmReset}
+        isLoading={isResetting}
+        variant="danger"
         title="Reset Platform Demo Data?"
-        size="sm"
-      >
-        <div className="space-y-4 pt-2 text-xs">
-          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-amber-800">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
-            <p>
-              This action will reset all local changes made to Students, Assessments, Skills, Learning Paths, and Resources back to the official Hackathon demo dataset.
-            </p>
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E5E5DF]">
-            <Button variant="outline" size="sm" onClick={() => setIsResetModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleConfirmReset}
-              isLoading={isResetting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Confirm Reset
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        description="This action will restore all student rosters, assessments, competencies, and learning paths to their original Hackathon demo dataset. Any temporary changes will be replaced."
+        confirmText="Confirm Reset"
+        cancelText="Cancel"
+      />
     </div>
   )
 }

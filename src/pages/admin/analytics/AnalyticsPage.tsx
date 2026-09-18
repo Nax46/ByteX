@@ -4,9 +4,10 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { LoadingState } from '@/components/common/LoadingState'
+import { DashboardSkeleton } from '@/components/ui/Skeleton'
 import { analyticsService } from '@/services/analyticsService'
 import { DEMO_ADMIN_ANALYTICS } from '@/data/admin/demo.admin.analytics'
+import { ROUTES } from '@/constants/routes'
 import {
   Users,
   Award,
@@ -15,11 +16,13 @@ import {
   ArrowUpRight,
   Download,
   Calendar,
+  CheckCircle2,
 } from 'lucide-react'
 
 export const AnalyticsPage: React.FC = () => {
   const [data, setData] = useState<typeof DEMO_ADMIN_ANALYTICS | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [exportNotice, setExportNotice] = useState<string | null>(null)
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -34,8 +37,13 @@ export const AnalyticsPage: React.FC = () => {
     loadAnalytics()
   }, [])
 
+  const handleExportTelemetry = () => {
+    setExportNotice('Telemetry report generated (CSV/PDF exported).')
+    setTimeout(() => setExportNotice(null), 3500)
+  }
+
   if (isLoading || !data) {
-    return <LoadingState message="Calculating platform analytics..." minHeight="min-h-[400px]" />
+    return <DashboardSkeleton />
   }
 
   // Maximum values for normalization
@@ -44,10 +52,22 @@ export const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      {/* Toast Notification */}
+      {exportNotice && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1F6B4F] text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-semibold animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+          <span>{exportNotice}</span>
+        </div>
+      )}
+
       {/* Header */}
       <PageHeader
-        title="Admin Analytics & Insights"
+        title="Platform Analytics & Insights"
         subtitle="Platform-wide telemetry across enrollment cohorts, assessment metrics, skill distributions, and curriculum engagement."
+        breadcrumbs={[
+          { label: 'Admin', href: ROUTES.ADMIN_DASHBOARD },
+          { label: 'Analytics' },
+        ]}
         badge={
           <Badge variant="outline" className="bg-[#D8E8DE]/40 text-[#1F6B4F] border-[#D8E8DE] font-semibold text-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-[#1F6B4F] mr-1.5" />
@@ -58,7 +78,8 @@ export const AnalyticsPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => alert('Exporting SkillPath Telemetry Report (CSV/PDF)...')}
+            onClick={handleExportTelemetry}
+            aria-label="Export platform telemetry report"
           >
             <Download className="w-4 h-4 mr-1.5" />
             Export Telemetry

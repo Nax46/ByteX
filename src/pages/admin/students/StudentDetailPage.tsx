@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { LoadingState } from '@/components/common/LoadingState'
+import { DashboardSkeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ROUTES } from '@/constants/routes'
 import { studentService } from '@/services/studentService'
@@ -54,7 +55,7 @@ export const StudentDetailPage: React.FC = () => {
   }, [id])
 
   if (isLoading) {
-    return <LoadingState message="Loading student dossier..." minHeight="min-h-[400px]" />
+    return <DashboardSkeleton />
   }
 
   if (!student) {
@@ -78,18 +79,29 @@ export const StudentDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Top Breadcrumb & Action */}
-      <div className="flex items-center justify-between">
-        <Link to={ROUTES.ADMIN_STUDENTS}>
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-1.5" />
-            Back to Students
-          </Button>
-        </Link>
-        <Badge variant="outline" className="bg-[#D8E8DE]/40 text-[#1F6B4F] border-[#D8E8DE] font-semibold text-xs">
-          Student ID: {student.id}
-        </Badge>
-      </div>
+      {/* Top PageHeader with Breadcrumbs */}
+      <PageHeader
+        title={student.name}
+        subtitle={`Dossier • ${student.course} (${student.semester}) • Career Goal: ${student.careerGoal}`}
+        breadcrumbs={[
+          { label: 'Admin', href: ROUTES.ADMIN_DASHBOARD },
+          { label: 'Students', href: ROUTES.ADMIN_STUDENTS },
+          { label: student.name },
+        ]}
+        badge={
+          <Badge variant="outline" className="bg-[#D8E8DE]/40 text-[#1F6B4F] border-[#D8E8DE] font-semibold text-xs">
+            Student ID: {student.id}
+          </Badge>
+        }
+        actions={
+          <Link to={ROUTES.ADMIN_STUDENTS}>
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="w-4 h-4 mr-1.5" />
+              Back to Students
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Hero Profile Card */}
       <Card className="p-6 bg-white border-[#E5E5DF]">

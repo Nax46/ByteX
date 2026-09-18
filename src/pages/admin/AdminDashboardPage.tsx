@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { LoadingState } from '@/components/common/LoadingState'
+import { DashboardSkeleton } from '@/components/ui/Skeleton'
 import { ROUTES } from '@/constants/routes'
 import { analyticsService } from '@/services/analyticsService'
 import { AdminDashboardMetric, AdminActivityItem } from '@/data/admin/demo.admin.dashboard'
@@ -46,7 +46,7 @@ export const AdminDashboardPage: React.FC = () => {
   }, [])
 
   if (isLoading) {
-    return <LoadingState message="Loading platform overview..." minHeight="min-h-[400px]" />
+    return <DashboardSkeleton />
   }
 
   const getMetricIcon = (id: string) => {

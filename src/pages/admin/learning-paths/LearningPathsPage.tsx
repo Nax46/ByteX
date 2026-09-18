@@ -7,15 +7,19 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { LoadingState } from '@/components/common/LoadingState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { learningPathService } from '@/services/learningPathService'
 import { AdminLearningPathRecord, LearningPathStep } from '@/data/admin/demo.admin.learningPaths'
+import { ROUTES } from '@/constants/routes'
 import {
-  Map,
   Plus,
   Edit2,
   Trash2,
   Layers,
+  Compass,
+  TrendingUp,
+  BookOpen,
 } from 'lucide-react'
 
 export const LearningPathsPage: React.FC = () => {
@@ -25,6 +29,11 @@ export const LearningPathsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isStepsModalOpen, setIsStepsModalOpen] = useState(false)
   const [selectedPath, setSelectedPath] = useState<AdminLearningPathRecord | null>(null)
+
+  // Destructive Delete State
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [pathToDelete, setPathToDelete] = useState<{ id: string; career: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const [formData, setFormData] = useState({
     career: '',
@@ -110,10 +119,21 @@ export const LearningPathsPage: React.FC = () => {
     await loadPaths()
   }
 
-  const handleDeletePath = async (id: string, career: string) => {
-    if (window.confirm(`Delete roadmap for "${career}"?`)) {
-      await learningPathService.deleteLearningPath(id)
+  const handlePromptDelete = (id: string, career: string) => {
+    setPathToDelete({ id, career })
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!pathToDelete) return
+    setIsDeleting(true)
+    try {
+      await learningPathService.deleteLearningPath(pathToDelete.id)
       await loadPaths()
+      setDeleteConfirmOpen(false)
+      setPathToDelete(null)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -141,49 +161,67 @@ export const LearningPathsPage: React.FC = () => {
 
   const handleRemoveStep = async (stepId: string) => {
     if (!selectedPath) return
+
     const updatedSteps = selectedPath.steps.filter((s) => s.id !== stepId)
     const updated = await learningPathService.updateLearningPath(selectedPath.id, {
       steps: updatedSteps,
       stepsCount: updatedSteps.length,
     })
+
     setSelectedPath(updated)
     await loadPaths()
   }
 
   if (isLoading) {
-    return <LoadingState message="Loading career learning paths..." minHeight="min-h-[400px]" />
+    return (
+      <div className="space-y-6 animate-fadeIn">
+        <PageHeader
+          title="Career Learning Paths"
+          subtitle="Architect structured milestone roadmaps, project sequences, and curriculum progress."
+          breadcrumbs={[
+            { label: 'Admin', href: ROUTES.ADMIN_DASHBOARD },
+            { label: 'Learning Paths' },
+          ]}
+        />
+        <TableSkeleton rows={5} columns={5} />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
       <PageHeader
-        title="Learning Path Management"
-        subtitle="Manage structured career roadmaps, step progressions, student milestones, and cohort completion rates."
+        title="Career Learning Paths"
+        subtitle="Architect structured milestone roadmaps, project sequences, and curriculum progress."
+        breadcrumbs={[
+          { label: 'Admin', href: ROUTES.ADMIN_DASHBOARD },
+          { label: 'Learning Paths' },
+        ]}
         badge={
           <Badge variant="outline" className="bg-[#D8E8DE]/40 text-[#1F6B4F] border-[#D8E8DE] font-semibold text-xs">
-            {paths.length} Career Roadmaps
+            {paths.length} Career Roadmaps Active
           </Badge>
         }
         actions={
           <Button variant="primary" size="sm" onClick={handleOpenAdd}>
             <Plus className="w-4 h-4 mr-1.5" />
-            New Learning Path
+            Create Learning Path
           </Button>
         }
       />
 
-      {/* Grid of Learning Paths */}
+      {/* Roadmaps Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {paths.map((path) => (
-          <Card key={path.id} className="p-6 bg-white border-[#E5E5DF] flex flex-col justify-between hover:shadow-sm transition-shadow">
+          <Card key={path.id} className="p-5 bg-white border-[#E5E5DF] flex flex-col justify-between hover:shadow-sm transition-shadow">
             <div className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-xl bg-[#D8E8DE]/60 text-[#1F6B4F] flex items-center justify-center font-bold">
-                  <Map className="w-5 h-5" />
-                </div>
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" size="sm" className="bg-[#F8F7F3] text-[#1F6B4F] font-semibold text-[10px]">
+                  {path.category}
+                </Badge>
                 <Badge
-                  variant={path.status === 'active' ? 'success' : path.status === 'draft' ? 'outline' : 'warning'}
+                  variant={path.status === 'active' ? 'success' : 'outline'}
                   size="sm"
                 >
                   {path.status.toUpperCase()}
@@ -191,55 +229,54 @@ export const LearningPathsPage: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="font-heading text-lg font-bold text-[#171918]">{path.career}</h3>
-                <p className="text-xs text-[#626763] line-clamp-2 mt-1">{path.description}</p>
+                <h3 className="font-heading text-base font-bold text-[#171918]">
+                  {path.career}
+                </h3>
+                <p className="text-xs text-[#626763] mt-1 line-clamp-2">
+                  {path.description}
+                </p>
               </div>
 
+              {/* Progress & Stats */}
               <div className="pt-2 border-t border-[#E5E5DF] space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#626763]">Curriculum Steps</span>
-                  <span className="font-semibold text-[#171918]">{path.stepsCount} milestones</span>
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#626763]">Cohort Completion</span>
+                  <span className="font-semibold text-[#1F6B4F]">{path.completionRate}%</span>
                 </div>
+                <ProgressBar value={path.completionRate} size="sm" />
 
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#626763]">Enrolled Learners</span>
-                  <span className="font-semibold text-[#171918]">{path.studentsEnrolled} students</span>
-                </div>
-
-                <div className="space-y-1 pt-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#626763]">Cohort Completion Rate</span>
-                    <span className="font-bold text-[#1F6B4F]">{path.completionRate}%</span>
-                  </div>
-                  <ProgressBar value={path.completionRate} size="sm" />
+                <div className="flex items-center justify-between text-[11px] text-[#626763] pt-1">
+                  <span>{path.studentsEnrolled} Learners</span>
+                  <span>{path.stepsCount} Milestone Phases</span>
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="pt-4 mt-4 border-t border-[#E5E5DF] flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
+            <div className="pt-4 border-t border-[#E5E5DF] mt-4 flex items-center justify-between">
+              <button
                 onClick={() => handleOpenSteps(path)}
-                className="text-xs"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1F6B4F] hover:text-[#154d38] cursor-pointer"
+                aria-label={`Manage milestones for ${path.career}`}
               >
-                <Layers className="w-3.5 h-3.5 mr-1.5" />
-                Manage Steps
-              </Button>
+                <Layers className="w-3.5 h-3.5" />
+                Manage Steps ({path.stepsCount})
+              </button>
 
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleOpenEdit(path)}
                   className="p-1.5 rounded-md hover:bg-[#F8F7F3] text-[#626763] hover:text-[#171918] transition-colors cursor-pointer"
-                  title="Edit Path Details"
+                  title="Edit Path Specs"
+                  aria-label={`Edit ${path.career}`}
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => handleDeletePath(path.id, path.career)}
+                  onClick={() => handlePromptDelete(path.id, path.career)}
                   className="p-1.5 rounded-md hover:bg-red-50 text-[#626763] hover:text-red-600 transition-colors cursor-pointer"
                   title="Delete Path"
+                  aria-label={`Delete ${path.career}`}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -253,83 +290,123 @@ export const LearningPathsPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedPath ? 'Edit Learning Path' : 'Create Career Learning Path'}
-        size="md"
+        centeredTitle={true}
+        title={selectedPath ? 'Edit Career Roadmap' : 'Create Career Learning Path'}
+        description={
+          selectedPath
+            ? 'Refine roadmap specifications, target career tracks, and cohort milestones.'
+            : 'Configure a phased curriculum sequence for a target professional occupation'
+        }
+        size="lg"
       >
-        <form onSubmit={handleSavePath} className="space-y-4 pt-2">
-          <Input
-            id="path-career"
-            label="Target Career Goal"
-            value={formData.career}
-            onChange={(e) => setFormData({ ...formData, career: e.target.value })}
-            placeholder="e.g. Cloud DevOps Engineer"
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <Select
-              label="Track Category"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              options={[
-                { value: 'Engineering', label: 'Engineering' },
-                { value: 'Data & Analytics', label: 'Data & Analytics' },
-                { value: 'Artificial Intelligence', label: 'Artificial Intelligence' },
-                { value: 'Design & Product', label: 'Design & Product' },
-                { value: 'Security & Infrastructure', label: 'Security & Infrastructure' },
-              ]}
-            />
-            <Select
-              label="Status"
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-              options={[
-                { value: 'active', label: 'Active' },
-                { value: 'draft', label: 'Draft' },
-                { value: 'archived', label: 'Archived' },
-              ]}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSavePath} className="space-y-4 pt-1">
+          {/* Section 1: Track Profile */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 pb-1 border-b border-[#E5E5DF]">
+              <Compass className="w-3.5 h-3.5 text-[#1F6B4F]" />
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#626763]">
+                Track Profile
+              </h4>
+            </div>
             <Input
-              id="path-students"
-              label="Enrolled Students"
-              type="number"
-              min="0"
-              value={formData.studentsEnrolled}
-              onChange={(e) => setFormData({ ...formData, studentsEnrolled: Number(e.target.value) })}
+              id="path-career"
+              label="Target Career Goal"
+              size="sm"
+              value={formData.career}
+              onChange={(e) => setFormData({ ...formData, career: e.target.value })}
+              placeholder="e.g. Cloud DevOps Engineer"
               required
             />
-            <Input
-              id="path-completion"
-              label="Completion Rate (%)"
-              type="number"
-              min="0"
-              max="100"
-              value={formData.completionRate}
-              onChange={(e) => setFormData({ ...formData, completionRate: Number(e.target.value) })}
-              required
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Select
+                label="Track Category"
+                size="sm"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                options={[
+                  { value: 'Engineering', label: 'Engineering' },
+                  { value: 'Data & Analytics', label: 'Data & Analytics' },
+                  { value: 'Artificial Intelligence', label: 'Artificial Intelligence' },
+                  { value: 'Design & Product', label: 'Design & Product' },
+                  { value: 'Security & Infrastructure', label: 'Security & Infrastructure' },
+                ]}
+              />
+              <Select
+                label="Lifecycle Status"
+                size="sm"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'draft', label: 'Draft' },
+                  { value: 'archived', label: 'Archived' },
+                ]}
+              />
+            </div>
           </div>
 
-          <div className="space-y-1 text-xs">
-            <label className="font-semibold text-[#171918]">Roadmap Overview</label>
-            <textarea
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full p-2.5 text-xs rounded-lg border border-[#E5E5DF] bg-[#F8F7F3] focus:bg-white focus:outline-none focus:border-[#1F6B4F] transition-colors"
-              placeholder="Describe curriculum milestones, industry stack, and target career outcomes..."
-              required
-            />
+          {/* Section 2: Cohort Metrics */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center gap-2 pb-1 border-b border-[#E5E5DF]">
+              <TrendingUp className="w-3.5 h-3.5 text-[#1F6B4F]" />
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#626763]">
+                Cohort Metrics
+              </h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Input
+                id="path-students"
+                label="Enrolled Students"
+                size="sm"
+                type="number"
+                min="0"
+                value={formData.studentsEnrolled}
+                onChange={(e) => setFormData({ ...formData, studentsEnrolled: Number(e.target.value) })}
+                required
+              />
+              <Input
+                id="path-completion"
+                label="Average Completion Rate (%)"
+                size="sm"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.completionRate}
+                onChange={(e) => setFormData({ ...formData, completionRate: Number(e.target.value) })}
+                required
+              />
+            </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-[#E5E5DF]">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
+          {/* Section 3: Overview Description */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center gap-2 pb-1 border-b border-[#E5E5DF]">
+              <BookOpen className="w-3.5 h-3.5 text-[#1F6B4F]" />
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#626763]">
+                Roadmap Overview
+              </h4>
+            </div>
+            <div className="space-y-1 text-xs">
+              <label htmlFor="path-desc" className="font-medium text-[#171918]">
+                Curriculum Scope & Prerequisites
+              </label>
+              <textarea
+                id="path-desc"
+                rows={3}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full p-2.5 text-xs rounded-lg border border-[#E5E5DF] bg-[#F8F7F3] focus:bg-white focus:outline-none focus:border-[#1F6B4F] transition-colors text-[#171918]"
+                placeholder="Describe curriculum milestones, industry tech stack, and expected job market outcomes..."
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E5E5DF]">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" size="sm" type="submit">
               {selectedPath ? 'Save Changes' : 'Create Path'}
             </Button>
           </div>
@@ -341,19 +418,21 @@ export const LearningPathsPage: React.FC = () => {
         <Modal
           isOpen={isStepsModalOpen}
           onClose={() => setIsStepsModalOpen(false)}
-          title={`Manage Roadmap Steps: ${selectedPath.career}`}
+          centeredTitle={true}
+          title={`Roadmap Steps: ${selectedPath.career}`}
+          description="Sequence core milestone phases and expected completion horizons."
           size="lg"
         >
-          <div className="space-y-4 pt-2 text-xs">
+          <div className="space-y-4 pt-1 text-xs">
             {/* Steps List */}
-            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
               {selectedPath.steps.map((step, idx) => (
                 <div
                   key={step.id}
-                  className="p-3 rounded-lg border border-[#E5E5DF] bg-[#F8F7F3] flex items-center justify-between gap-3"
+                  className="p-3 rounded-xl border border-[#E5E5DF] bg-[#F8F7F3] flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-white border border-[#E5E5DF] flex items-center justify-center font-bold text-[11px] text-[#1F6B4F]">
+                    <span className="w-7 h-7 rounded-full bg-white border border-[#E5E5DF] flex items-center justify-center font-bold text-xs text-[#1F6B4F] shrink-0">
                       {idx + 1}
                     </span>
                     <div>
@@ -364,8 +443,9 @@ export const LearningPathsPage: React.FC = () => {
 
                   <button
                     onClick={() => handleRemoveStep(step.id)}
-                    className="p-1.5 rounded text-[#626763] hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-md text-[#626763] hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                     title="Remove Step"
+                    aria-label={`Remove step ${step.title}`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -374,15 +454,15 @@ export const LearningPathsPage: React.FC = () => {
             </div>
 
             {/* Add Step Form */}
-            <div className="p-3 rounded-xl border border-[#D8E8DE] bg-[#D8E8DE]/20 space-y-2">
+            <div className="p-3.5 rounded-xl border border-[#D8E8DE] bg-[#D8E8DE]/20 space-y-2">
               <span className="font-semibold text-xs text-[#1F6B4F]">Add Next Milestone Step</span>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
-                  placeholder="e.g. Next.js App Router & SSR"
+                  placeholder="e.g. Next.js App Router & Server Actions"
                   value={newStepTitle}
                   onChange={(e) => setNewStepTitle(e.target.value)}
-                  className="flex-1 p-2 text-xs rounded-lg border border-[#E5E5DF] bg-white text-[#171918]"
+                  className="flex-1 h-9 px-3 text-xs rounded-lg border border-[#E5E5DF] bg-white text-[#171918] focus:outline-none focus:border-[#1F6B4F]"
                 />
                 <input
                   type="number"
@@ -391,7 +471,7 @@ export const LearningPathsPage: React.FC = () => {
                   max="12"
                   value={newStepWeeks}
                   onChange={(e) => setNewStepWeeks(Number(e.target.value))}
-                  className="w-20 p-2 text-xs rounded-lg border border-[#E5E5DF] bg-white text-[#171918]"
+                  className="w-full sm:w-24 h-9 px-3 text-xs rounded-lg border border-[#E5E5DF] bg-white text-[#171918] focus:outline-none focus:border-[#1F6B4F]"
                 />
                 <Button variant="primary" size="sm" onClick={handleAddStep}>
                   Add Step
@@ -407,6 +487,22 @@ export const LearningPathsPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setPathToDelete(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        variant="danger"
+        title="Delete Career Learning Path?"
+        description={`Are you sure you want to remove the roadmap for "${pathToDelete?.career}"? This will unlink current enrolled milestones.`}
+        confirmText="Delete Path"
+        cancelText="Cancel"
+      />
     </div>
   )
 }
