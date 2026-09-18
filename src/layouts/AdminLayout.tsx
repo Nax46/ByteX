@@ -9,8 +9,8 @@ export const AdminLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <div className="h-screen w-full flex bg-[#F8F7F3] text-[#171918] overflow-hidden select-none">
-      {/* Fixed Left Sidebar (Desktop) */}
+    <div className="min-h-screen bg-[#F8F7F3] text-[#171918] select-none">
+      {/* Fixed Left Sidebar (Desktop only — truly fixed, never scrolls) */}
       <AdminSidebar
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
@@ -22,15 +22,20 @@ export const AdminLayout: React.FC = () => {
         onClose={() => setMobileMenuOpen(false)}
       />
 
-      {/* Right Content Area: Independently Scrollable Container */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative z-10">
-        <div className="shrink-0">
+      {/* Right Content Area — offset to the right of the fixed sidebar */}
+      <div
+        className={`flex flex-col min-h-screen transition-all duration-200 ${
+          isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'
+        }`}
+      >
+        {/* Sticky top header inside the scrollable column */}
+        <div className="sticky top-0 z-20 shrink-0">
           <AdminHeader onMobileMenuToggle={() => setMobileMenuOpen(true)} />
         </div>
 
         <main
           id="admin-main-container"
-          className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto select-text"
+          className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto select-text"
         >
           <Outlet />
         </main>

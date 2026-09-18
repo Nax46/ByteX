@@ -65,7 +65,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, setIsCo
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col border-r border-[#E5E5DF] bg-white transition-all duration-200 z-30 select-none h-screen shrink-0 sticky top-0',
+        'hidden md:flex flex-col border-r border-[#E5E5DF] bg-white transition-all duration-200 z-30 select-none fixed inset-y-0 left-0 top-0 bottom-0',
         isCollapsed ? 'w-20' : 'w-64'
       )}
     >
