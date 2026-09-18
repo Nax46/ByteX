@@ -1,5 +1,30 @@
-import { Schema, model, Document, Model } from 'mongoose';
-import { IAssessmentAttempt, AttemptStatus } from '../types/assessment.js';
+import mongoose, { Schema, model, Document, Model, Types } from 'mongoose';
+import { IAssessmentAttempt as IPerson2Attempt, AttemptStatus as Person2AttemptStatus } from '../types/assessment.js';
+
+export const AssessmentStatus = {
+  IN_PROGRESS: 'IN_PROGRESS',
+  SUBMITTED: 'SUBMITTED',
+  COMPLETED: 'COMPLETED',
+  ABANDONED: 'ABANDONED',
+} as const;
+
+export type AssessmentStatus = (typeof AssessmentStatus)[keyof typeof AssessmentStatus];
+
+export interface IAssessmentAttempt {
+  userId?: Types.ObjectId;
+  studentProfileId?: Types.ObjectId;
+  assessmentId?: Types.ObjectId;
+  status: AssessmentStatus;
+  startedAt?: Date;
+  submittedAt?: Date | null;
+  answers?: IPerson2Attempt['answers'];
+  skillScores?: IPerson2Attempt['skillScores'];
+  totalEarnedPoints?: number;
+  totalMaxPoints?: number;
+  completedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 export interface IAssessmentAttemptDocument extends Omit<IAssessmentAttempt, '_id'>, Document {}
 
@@ -69,23 +94,31 @@ const SkillScoreSchema = new Schema(
 
 const AssessmentAttemptSchema = new Schema<IAssessmentAttemptDocument>(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
     studentProfileId: {
       type: Schema.Types.ObjectId,
-      required: [true, 'studentProfileId reference is required'],
+      ref: 'StudentProfile',
     },
     assessmentId: {
       type: Schema.Types.ObjectId,
       ref: 'Assessment',
-      required: [true, 'assessmentId reference is required'],
     },
     status: {
       type: String,
       required: true,
       default: 'COMPLETED',
-      enum: {
-        values: ['IN_PROGRESS', 'COMPLETED', 'ABANDONED'] as AttemptStatus[],
-        message: '{VALUE} is not a valid attempt status',
-      },
+    },
+    startedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    submittedAt: {
+      type: Date,
+      default: null,
     },
     answers: [AnswerSchema],
     skillScores: [SkillScoreSchema],
@@ -105,14 +138,31 @@ const AssessmentAttemptSchema = new Schema<IAssessmentAttemptDocument>(
   {
     timestamps: true,
     collection: 'assessment_attempts',
+    toJSON: {
+      transform: (_doc, ret: Record<string, any>) => {
+        delete ret.__v;
+        return ret;
+      },
+    },
+    toObject: {
+      transform: (_doc, ret: Record<string, any>) => {
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
 
-// Indexes for historical queries
+// Compound indexes for history queries & lookups
 AssessmentAttemptSchema.index({ studentProfileId: 1, completedAt: -1 });
 AssessmentAttemptSchema.index({ assessmentId: 1 });
+AssessmentAttemptSchema.index({ userId: 1, createdAt: -1 });
+AssessmentAttemptSchema.index({ userId: 1, status: 1 });
 
-export const AssessmentAttemptModel: Model<IAssessmentAttemptDocument> = model<IAssessmentAttemptDocument>(
-  'AssessmentAttempt',
-  AssessmentAttemptSchema
-);
+export const AssessmentAttemptModel: Model<IAssessmentAttemptDocument> =
+  mongoose.models.AssessmentAttempt ||
+  model<IAssessmentAttemptDocument>('AssessmentAttempt', AssessmentAttemptSchema);
+
+export const AssessmentAttempt = AssessmentAttemptModel;
+
+export default AssessmentAttemptModel;

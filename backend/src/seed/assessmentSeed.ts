@@ -487,7 +487,7 @@ export const seedAssessmentData = async (): Promise<AssessmentSeedResult> => {
 };
 
 // Executable CLI runner
-if (import.meta.url === `file:///${process.argv[1]?.replace(/\\/g, '/')}`) {
+if (typeof require !== 'undefined' && require.main === module) {
   connectDB()
     .then(async () => {
       console.log('Running assessment seed script...');

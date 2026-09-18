@@ -102,7 +102,7 @@ export const seedFoundationData = async (): Promise<SeedResult> => {
 };
 
 // Executable runner when called directly via CLI
-if (import.meta.url === `file:///${process.argv[1]?.replace(/\\/g, '/')}`) {
+if (typeof require !== 'undefined' && require.main === module) {
   connectDB()
     .then(async () => {
       console.log('Running foundation seed script...');
