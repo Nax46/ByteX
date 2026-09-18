@@ -12,6 +12,18 @@ export const Navbar: React.FC = () => {
   const navigate = useNavigate()
   const { isAuthenticated, user, logout } = useAuth()
 
+  const [isScrolled, setIsScrolled] = useState(false)
+
+  // Track scroll position for subtle elevation transition
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 8)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -51,7 +63,11 @@ export const Navbar: React.FC = () => {
   return (
     <header
       role="banner"
-      className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-[#E5E5DF]/80 shadow-[0_1px_3px_0_rgba(23,25,24,0.02)] transition-colors duration-200"
+      className={`sticky top-0 z-40 w-full transition-all duration-200 ${
+        isScrolled
+          ? 'bg-white/95 backdrop-blur-md border-b border-[#E5E5DF] shadow-[0_2px_8px_0_rgba(23,25,24,0.04)]'
+          : 'bg-white/85 backdrop-blur-sm border-b border-[#E5E5DF]/70 shadow-[0_1px_3px_0_rgba(23,25,24,0.02)]'
+      }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
         {/* Brand Logo */}
