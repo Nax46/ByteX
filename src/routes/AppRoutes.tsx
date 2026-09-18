@@ -30,18 +30,39 @@ import { ProgressPage } from '@/pages/career/ProgressPage'
 import { CareersPage } from '@/pages/career/CareersPage'
 import { MentorPage } from '@/pages/mentor/MentorPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { DashboardSkeleton } from '@/components/ui/Skeleton'
 
-// Authenticated Admin Pages
-import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
-import { StudentsPage } from '@/pages/admin/students/StudentsPage'
-import { StudentDetailPage } from '@/pages/admin/students/StudentDetailPage'
-import { AssessmentsPage as AdminAssessmentsPage } from '@/pages/admin/assessments/AssessmentsPage'
-import { SkillsPage as AdminSkillsPage } from '@/pages/admin/skills/SkillsPage'
-import { ResourcesPage as AdminResourcesPage } from '@/pages/admin/resources/ResourcesPage'
-import { LearningPathsPage } from '@/pages/admin/learning-paths/LearningPathsPage'
-import { CareersPage as AdminCareersPage } from '@/pages/admin/careers/CareersPage'
-import { AnalyticsPage } from '@/pages/admin/analytics/AnalyticsPage'
-import { AdminSettingsPage } from '@/pages/admin/settings/AdminSettingsPage'
+// Route-Level Code Splitting for Admin Portal
+const AdminDashboardPage = React.lazy(() =>
+  import('@/pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
+)
+const StudentsPage = React.lazy(() =>
+  import('@/pages/admin/students/StudentsPage').then((m) => ({ default: m.StudentsPage }))
+)
+const StudentDetailPage = React.lazy(() =>
+  import('@/pages/admin/students/StudentDetailPage').then((m) => ({ default: m.StudentDetailPage }))
+)
+const AdminAssessmentsPage = React.lazy(() =>
+  import('@/pages/admin/assessments/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage }))
+)
+const AdminSkillsPage = React.lazy(() =>
+  import('@/pages/admin/skills/SkillsPage').then((m) => ({ default: m.SkillsPage }))
+)
+const AdminResourcesPage = React.lazy(() =>
+  import('@/pages/admin/resources/ResourcesPage').then((m) => ({ default: m.ResourcesPage }))
+)
+const LearningPathsPage = React.lazy(() =>
+  import('@/pages/admin/learning-paths/LearningPathsPage').then((m) => ({ default: m.LearningPathsPage }))
+)
+const AdminCareersPage = React.lazy(() =>
+  import('@/pages/admin/careers/CareersPage').then((m) => ({ default: m.CareersPage }))
+)
+const AnalyticsPage = React.lazy(() =>
+  import('@/pages/admin/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }))
+)
+const AdminSettingsPage = React.lazy(() =>
+  import('@/pages/admin/settings/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage }))
+)
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -89,7 +110,7 @@ export const AppRoutes: React.FC = () => {
         <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
       </Route>
 
-      {/* Authenticated Admin Portal with AdminLayout (Sidebar & Header) */}
+      {/* Authenticated Admin Portal with AdminLayout & Route-Level Suspense */}
       <Route
         element={
           <ProtectedRoute allowedRoles={['admin']}>
@@ -98,16 +119,90 @@ export const AppRoutes: React.FC = () => {
         }
       >
         <Route path={ROUTES.ADMIN} element={<Navigate to={ROUTES.ADMIN_DASHBOARD} replace />} />
-        <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
-        <Route path={ROUTES.ADMIN_STUDENTS} element={<StudentsPage />} />
-        <Route path={ROUTES.ADMIN_STUDENT_DETAIL} element={<StudentDetailPage />} />
-        <Route path={ROUTES.ADMIN_ASSESSMENTS} element={<AdminAssessmentsPage />} />
-        <Route path={ROUTES.ADMIN_SKILLS} element={<AdminSkillsPage />} />
-        <Route path={ROUTES.ADMIN_RESOURCES} element={<AdminResourcesPage />} />
-        <Route path={ROUTES.ADMIN_LEARNING_PATHS} element={<LearningPathsPage />} />
-        <Route path={ROUTES.ADMIN_CAREERS} element={<AdminCareersPage />} />
-        <Route path={ROUTES.ADMIN_ANALYTICS} element={<AnalyticsPage />} />
-        <Route path={ROUTES.ADMIN_SETTINGS} element={<AdminSettingsPage />} />
+        <Route
+          path={ROUTES.ADMIN_DASHBOARD}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <AdminDashboardPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_STUDENTS}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <StudentsPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path="/admin/students/new"
+          element={<Navigate to={`${ROUTES.ADMIN_STUDENTS}?action=new`} replace />}
+        />
+        <Route
+          path={ROUTES.ADMIN_STUDENT_DETAIL}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <StudentDetailPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_ASSESSMENTS}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <AdminAssessmentsPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_SKILLS}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <AdminSkillsPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_RESOURCES}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <AdminResourcesPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_LEARNING_PATHS}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <LearningPathsPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_CAREERS}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <AdminCareersPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_ANALYTICS}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <AnalyticsPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_SETTINGS}
+          element={
+            <React.Suspense fallback={<DashboardSkeleton />}>
+              <AdminSettingsPage />
+            </React.Suspense>
+          }
+        />
       </Route>
 
       {/* Catch-all fallback */}

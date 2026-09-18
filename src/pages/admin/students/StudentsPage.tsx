@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -33,6 +33,7 @@ import {
 const PAGE_SIZE = 6
 
 export const StudentsPage: React.FC = () => {
+  const [searchParams] = useSearchParams()
   const [students, setStudents] = useState<AdminStudentRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -73,7 +74,10 @@ export const StudentsPage: React.FC = () => {
 
   useEffect(() => {
     loadStudents()
-  }, [])
+    if (searchParams.get('action') === 'new') {
+      handleOpenAddModal()
+    }
+  }, [searchParams])
 
   // Filter & Sort Logic
   const filteredStudents = useMemo(() => {
