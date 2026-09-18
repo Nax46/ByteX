@@ -1,1 +1,498 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    --font-heading: 'Manrope', 'Inter', system-ui, sans-serif;
+    
+    /* Warm Premium Light Palette */
+    --color-bg: #F8F7F3;
+    --color-surface: #FFFFFF;
+    --color-text: #171918;
+    --color-text-muted: #626763;
+    --color-border: #E5E5DF;
+
+    /* Brand Accents */
+    --color-primary: #1F6B4F;
+    --color-primary-hover: #17543E;
+    --color-secondary: #D8E8DE;
+    --color-highlight: #E7A84B;
+    --color-lavender: #E8E3F4;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.025em;
+    color: var(--color-text);
+  }
+}
+
+/* Subtle modern scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #F1EFEA;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8D6CE;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C4C2B8;
+}
+
+/* ==========================================================================
+   HIGH-END PROFESSIONAL ANIMATIONS & INTERACTION PHYSICS
+   ========================================================================== */
+
+/* 1. Page & Component Staggered Entrance */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-popIn {
+  animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Stagger Delays */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+.stagger-6 { animation-delay: 300ms; }
+
+/* 2. Floating Ambient Physics (For Hero cards & preview nodes) */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+.animate-float {
+  animation: floatSlow 4s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: floatReverse 4.5s ease-in-out infinite;
+}
+
+/* 3. Signature Learning Path Pulse & Ambient Glow */
+@keyframes pathPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(31, 107, 79, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(31, 107, 79, 0);
+  }
+}
+
+.animate-pathPulse {
+  animation: pathPulse 2.2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+@keyframes amberGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(231, 168, 75, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(231, 168, 75, 0);
+  }
+}
+
+.animate-amberGlow {
+  animation: amberGlow 2.2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+/* 4. Signature Connected Path Flow Animation */
+@keyframes pathFlow {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 28px 0;
+  }
+}
+
+.signature-path-flow {
+  background: repeating-linear-gradient(
+    to right,
+    #1F6B4F 0,
+    #1F6B4F 6px,
+    transparent 6px,
+    transparent 14px
+  );
+  background-size: 28px 2px;
+  animation: pathFlow 1.6s linear infinite;
+}
+
+/* 5. Shimmer Sweep on Progress Bars */
+@keyframes progressShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.32) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: progressShimmer 2.2s infinite ease-in-out;
+}
+
+/* 6. Card Hover & Focus Physics */
+.edu-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E5DF;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(23, 25, 24, 0.03), 0 1px 2px -1px rgba(23, 25, 24, 0.03);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease;
+}
+
+.edu-card:hover {
+  border-color: #D0D0C8;
+  box-shadow: 0 8px 20px -4px rgba(23, 25, 24, 0.06);
+  transform: translateY(-1.5px);
+}
+
+/* 7. Slide Transitions for Multi-step flows & Quizzes */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 8. Ring Celebration & Pulse Effect */
+@keyframes ringPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(31, 107, 79, 0.4);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 12px rgba(31, 107, 79, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(31, 107, 79, 0);
+  }
+}
+
+.animate-ringPulse {
+  animation: ringPulse 2s infinite ease-in-out;
+}
+
+/* 9. Interactive Micro-Interactions */
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -2px rgba(23, 25, 24, 0.08);
+}
+
+.group:hover .group-hover-arrow {
+  transform: translateX(3px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 10. Button Click Ripple & Press Physics */
+button:active {
+  transform: scale(0.985);
+  transition-duration: 0.08s;
+}
+
+/* ==========================================================================
+   SENIOR PRINCIPAL GLASSMORPHISM & OPTICAL SPECULAR SHADERS (25+ YRS CRAFT)
+   ========================================================================== */
+
+/* Ambient Color Refraction Orbs (Soft organic meshes drifting behind frosted glass) */
+@keyframes orbFloat1 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(35px, -25px) scale(1.08);
+  }
+  100% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+}
+
+@keyframes orbFloat2 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(-30px, 30px) scale(1.12);
+  }
+  100% {
+    transform: translate(25px, -15px) scale(0.92);
+  }
+}
+
+@keyframes orbFloat3 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(20px, 35px) scale(1.05);
+  }
+  100% {
+    transform: translate(-35px, -20px) scale(1);
+  }
+}
+
+.ambient-orb-forest {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: 0.55;
+  background: radial-gradient(circle, rgba(216, 232, 222, 0.9) 0%, rgba(31, 107, 79, 0.22) 65%, transparent 100%);
+  animation: orbFloat1 20s ease-in-out infinite alternate;
+}
+
+.ambient-orb-amber {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(85px);
+  pointer-events: none;
+  opacity: 0.4;
+  background: radial-gradient(circle, rgba(254, 243, 199, 0.9) 0%, rgba(231, 168, 75, 0.25) 60%, transparent 100%);
+  animation: orbFloat2 24s ease-in-out infinite alternate;
+}
+
+.ambient-orb-lavender {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  pointer-events: none;
+  opacity: 0.35;
+  background: radial-gradient(circle, rgba(232, 227, 244, 0.9) 0%, rgba(139, 92, 246, 0.12) 65%, transparent 100%);
+  animation: orbFloat3 22s ease-in-out infinite alternate;
+}
+
+/* Glass Refractive Panel */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 
+    0 4px 20px -2px rgba(23, 25, 24, 0.04),
+    0 1px 3px 0 rgba(23, 25, 24, 0.02),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px 0 rgba(229, 229, 223, 0.3);
+}
+
+/* Glass Elevated Container */
+.glass-panel-elevated {
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 20px 40px -10px rgba(23, 25, 24, 0.08),
+    0 4px 12px -2px rgba(23, 25, 24, 0.03),
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 1px 0 rgba(229, 229, 223, 0.4);
+}
+
+/* Interactive Glass Card with Specular Lighting */
+.glass-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  box-shadow: 
+    0 4px 20px -2px rgba(23, 25, 24, 0.03),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(229, 229, 223, 0.4);
+  transition: 
+    transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(31, 107, 79, 0.35);
+  box-shadow: 
+    0 16px 36px -6px rgba(23, 25, 24, 0.08),
+    0 4px 12px -2px rgba(31, 107, 79, 0.06),
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 1),
+    inset 0 0 0 1px rgba(31, 107, 79, 0.12);
+  transform: translateY(-2.5px);
+}
+
+/* Glass Floating Pill */
+.glass-pill {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px) saturate(170%);
+  -webkit-backdrop-filter: blur(14px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 4px 14px -2px rgba(23, 25, 24, 0.05),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-pill:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(31, 107, 79, 0.3);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 18px -2px rgba(23, 25, 24, 0.08);
+}
+
+/* Glass Sheen Glide (A subtle diagonal beam of light that catches the bevel) */
+.glass-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-sheen::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -60%;
+  width: 220%;
+  height: 220%;
+  background: linear-gradient(
+    65deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 65%
+  );
+  transform: rotate(25deg) translateY(-120%);
+  pointer-events: none;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-sheen:hover::after {
+  transform: rotate(25deg) translateY(120%);
+}
