@@ -100,6 +100,29 @@ export const AssessmentResultsPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-[#626763] max-w-md leading-relaxed">
               You answered {result.correctQuestions} out of {result.totalQuestions} questions correctly. Your skills inventory and gap matrix have been updated.
             </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Badge
+                variant={
+                  result.integrityStatus === 'TERMINATED_VIOLATION'
+                    ? 'danger'
+                    : result.integrityStatus === 'WARNING_ISSUED'
+                    ? 'warning'
+                    : 'forest'
+                }
+                size="sm"
+              >
+                {result.integrityStatus === 'TERMINATED_VIOLATION'
+                  ? 'Violations Exceeded'
+                  : result.integrityStatus === 'WARNING_ISSUED'
+                  ? 'Completed with Warnings'
+                  : 'Verified Integrity'}
+              </Badge>
+              {typeof result.violations === 'number' && (
+                <span className="text-[11px] text-[#626763]">
+                  • {result.violations} Tab/Screen warning(s) logged
+                </span>
+              )}
+            </div>
           </div>
           <ProgressRing value={result.score} label="Score" variant="forest" size={130} />
         </div>
