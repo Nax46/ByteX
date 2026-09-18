@@ -1,4 +1,4 @@
-# AI SkillPath — Frontend Platform
+# AI SkillPath — Frontend & Intelligence Platform
 
 > **«Know your skills. Find your gaps. Build your future.»**  
 > An AI-powered continuous learning roadmap and career readiness platform for modern developers.
@@ -13,6 +13,7 @@
 - **Routing**: [React Router v7](https://reactrouter.com/) (BrowserRouter with public & protected route boundaries)
 - **HTTP Client**: [Axios](https://axios-http.com/) with centralized interceptors, token caching, and error normalization
 - **Icons**: [Lucide React](https://lucide.dev/)
+- **Backend & Database**: Node.js + Express + Mongoose (MongoDB Atlas) + Zod + Vitest
 
 ---
 
@@ -46,7 +47,15 @@ Open `http://localhost:5173` in your browser.
 npm run typecheck    # Strict TypeScript verification
 npm run lint         # ESLint validation
 npm run build        # Production bundle compilation
+npm test             # Run backend & domain unit tests
 ```
+
+---
+
+## Developer Documentation
+
+Person 2 Database & Intelligence Documentation:
+[docs/person-2/P2_READ_FIRST.md](file:///n:/ByteX/docs/person-2/P2_READ_FIRST.md)
 
 ---
 
@@ -124,13 +133,23 @@ src/
 │   └── user.mock.ts
 ├── App.tsx                  # Root application wrapper (Router + AuthProvider)
 └── main.tsx                 # React DOM mount point
+
+backend/
+├── src/
+│   ├── config/              # MongoDB connection
+│   ├── models/              # Mongoose domain models (Skill, Career, Assessment, etc.)
+│   ├── schemas/             # Zod validation schemas
+│   ├── seed/                # Idempotent seed data scripts
+│   ├── services/            # Deterministic scoring & gap engines
+│   └── types/               # Backend domain types
+└── tests/                   # Vitest unit & integration test suites
 ```
 
 ---
 
 ## 🔌 Backend Integration Contract
 
-The backend and database team (MongoDB, Node.js / FastAPI) can integrate seamlessly by following this pattern:
+The backend and database team (MongoDB, Node.js / Express) can integrate seamlessly by following this pattern:
 
 ```
 UI Component
@@ -156,13 +175,6 @@ Backend API Server
 | **Curated Resources** | `src/api/endpoints/resources.api.ts` | `GET /resources`, `PUT /resources/:id/completion` |
 | **Hands-on Projects** | `src/api/endpoints/projects.api.ts` | `GET /projects/recommended`, `PUT /projects/:id/status` |
 | **AI Mentor** | `src/api/endpoints/mentor.api.ts` | `POST /mentor/chat`, `GET /mentor/history` *(Secret keys stay on backend!)* |
-
-### How to Connect:
-1. Start your backend API server on your desired port.
-2. In frontend `.env`, point `VITE_API_BASE_URL` to your API URL (e.g. `http://localhost:5000/api`).
-3. Set `VITE_ENABLE_MOCK_FALLBACK=false` (or toggle the mode directly in the UI Header / Settings).
-4. Update request/response contracts in the corresponding file in `src/api/endpoints/`.
-5. **No UI component rewrites are needed.**
 
 ---
 

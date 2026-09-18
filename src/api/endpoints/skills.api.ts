@@ -1,4 +1,4 @@
-import { apiClient } from '../client'
+import { apiClient } from '@/api/client'
 import { Skill, SkillGap } from '@/types/skill.types'
 import { DEMO_SKILLS, DEMO_SKILL_GAPS } from '@/data/demo.skills'
 
@@ -28,6 +28,11 @@ export const skillsApi = {
     } catch {
       return DEMO_SKILL_GAPS
     }
+  },
+
+  getSkillGapPriority: async (): Promise<ISkillGapPriorityReadout> => {
+    const res = await apiClient.get<ISkillGapPriorityReadout>('/v1/intelligence/skill-gap-priority')
+    return res.data
   },
 
   updateSkillTarget: async (skillId: string, targetLevel: number): Promise<Skill> => {

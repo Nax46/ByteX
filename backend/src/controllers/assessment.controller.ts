@@ -4,9 +4,26 @@ import {
   submitAssessment,
   getAttemptById,
   getAssessmentHistory,
+  getStudentFacingQuestions,
   AssessmentError,
 } from '../services/assessment.service';
 import { sendSuccess, sendError } from '../utils/api-response';
+
+/**
+ * Retrieves student-facing diagnostic questions securely.
+ */
+export const getQuestionsHandler = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const questions = await getStudentFacingQuestions();
+    sendSuccess(res, questions, 'Questions retrieved successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * Starts a new assessment attempt or resumes an existing IN_PROGRESS attempt.

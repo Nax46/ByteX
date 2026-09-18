@@ -80,7 +80,7 @@ export const getDashboardSummary = async (userId: string): Promise<DashboardSumm
     ? {
         id: latestAttemptDoc._id.toString(),
         status: latestAttemptDoc.status,
-        startedAt: latestAttemptDoc.startedAt,
+        startedAt: latestAttemptDoc.startedAt || new Date(),
         submittedAt: latestAttemptDoc.submittedAt || null,
       }
     : null;

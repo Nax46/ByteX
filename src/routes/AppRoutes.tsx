@@ -28,6 +28,7 @@ import { ResourcesPage } from '@/pages/resources/ResourcesPage'
 import { ProjectsPage } from '@/pages/projects/ProjectsPage'
 import { ProgressPage } from '@/pages/career/ProgressPage'
 import { CareersPage } from '@/pages/career/CareersPage'
+import { CareerReadinessPage } from '@/pages/career/CareerReadinessPage'
 import { MentorPage } from '@/pages/mentor/MentorPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { DashboardSkeleton } from '@/components/ui/Skeleton'
@@ -105,7 +106,7 @@ export const AppRoutes: React.FC = () => {
         <Route path={ROUTES.PROJECTS} element={<ProjectsPage />} />
         <Route path={ROUTES.PROGRESS} element={<ProgressPage />} />
         <Route path={ROUTES.CAREERS} element={<CareersPage />} />
-        <Route path={ROUTES.CAREER_READINESS} element={<CareersPage />} />
+        <Route path={ROUTES.CAREER_READINESS} element={<CareerReadinessPage />} />
         <Route path={ROUTES.MENTOR} element={<MentorPage />} />
         <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
       </Route>

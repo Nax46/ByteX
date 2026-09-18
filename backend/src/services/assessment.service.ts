@@ -5,6 +5,8 @@ import {
   AssessmentStatus,
   IAssessmentAttempt,
 } from '../models/AssessmentAttempt';
+import { QuestionModel } from '../models/Question';
+import { StudentFacingQuestionDTO } from '../types/assessment';
 
 export class AssessmentError extends Error {
   statusCode: number;
@@ -15,6 +17,22 @@ export class AssessmentError extends Error {
     this.statusCode = statusCode;
   }
 }
+
+/**
+ * Retrieves active diagnostic questions, stripping answer keys and explanations.
+ */
+export const getStudentFacingQuestions = async (): Promise<StudentFacingQuestionDTO[]> => {
+  const questionDocs = await QuestionModel.find({ isActive: true }).lean();
+  return questionDocs.map((q) => ({
+    _id: q._id.toString(),
+    skillId: q.skillId.toString(),
+    assessmentId: q.assessmentId ? q.assessmentId.toString() : undefined,
+    text: q.text,
+    options: q.options.map((o) => ({ optionId: o.optionId, text: o.text })),
+    difficulty: q.difficulty,
+    points: q.points,
+  }));
+};
 
 export interface SafeAssessmentAttempt {
   id: string;
@@ -44,9 +62,9 @@ export const formatSafeAttempt = (
 ): SafeAssessmentAttempt => {
   return {
     id: attempt._id.toString(),
-    userId: attempt.userId.toString(),
+    userId: attempt.userId ? attempt.userId.toString() : '',
     status: attempt.status,
-    startedAt: attempt.startedAt,
+    startedAt: attempt.startedAt || new Date(),
     submittedAt: attempt.submittedAt || null,
     createdAt: attempt.createdAt || new Date(),
     updatedAt: attempt.updatedAt || new Date(),
@@ -113,7 +131,7 @@ export const submitAssessment = async (
   }
 
   // Verify ownership: users can only submit their own attempts
-  if (attempt.userId.toString() !== userId) {
+  if (!attempt.userId || attempt.userId.toString() !== userId) {
     throw new AssessmentError('Forbidden: You do not have permission to access this assessment attempt', 403);
   }
 
@@ -151,7 +169,7 @@ export const getAttemptById = async (
   }
 
   // Verify ownership: users can only view their own attempts
-  if (attempt.userId.toString() !== userId) {
+  if (!attempt.userId || attempt.userId.toString() !== userId) {
     throw new AssessmentError('Forbidden: You do not have permission to access this assessment attempt', 403);
   }
 
