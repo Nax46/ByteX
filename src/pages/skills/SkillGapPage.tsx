@@ -6,45 +6,56 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import { LoadingState } from '@/components/common/LoadingState'
-import { ErrorState } from '@/components/common/ErrorState'
-import { skillsApi, ISkillGapPriorityReadout } from '@/api/endpoints/skills.api'
 import { ROUTES } from '@/constants/routes'
-import { ArrowRight, CheckCircle2, Target } from 'lucide-react'
+import { skillsApi } from '@/api/endpoints/skills.api'
+import { profileApi } from '@/api/endpoints/profile.api'
+import { SkillGap } from '@/types/skill.types'
+import { UserStats } from '@/types/user.types'
+import { useAuth } from '@/hooks/useAuth'
+import { ArrowRight, CheckCircle2, Target, Award } from 'lucide-react'
+import { DEFAULT_CAREER_GOAL } from '@/data/demo.student'
 
 export const SkillGapPage: React.FC = () => {
-  const [readout, setReadout] = useState<ISkillGapPriorityReadout | null>(null)
+  const { user } = useAuth()
+  const [gaps, setGaps] = useState<SkillGap[]>([])
+  const [stats, setStats] = useState<UserStats | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchSkillGapData = async () => {
+    let isMounted = true
+    const loadData = async () => {
       setIsLoading(true)
-      setError(null)
       try {
-        const data = await skillsApi.getSkillGapPriority()
-        setReadout(data)
-      } catch (err: unknown) {
-        console.error('Failed to fetch skill gap analysis readout:', err)
-        setError('Unable to load skill gap analysis data.')
+        const [gapsRes, statsRes] = await Promise.allSettled([
+          skillsApi.getSkillGaps(),
+          profileApi.getUserStats(),
+        ])
+
+        if (!isMounted) return
+        if (gapsRes.status === 'fulfilled') setGaps(gapsRes.value || [])
+        if (statsRes.status === 'fulfilled') setStats(statsRes.value)
+      } catch (err) {
+        console.error('Failed to load skill gaps:', err)
       } finally {
-        setIsLoading(false)
+        if (isMounted) setIsLoading(false)
       }
     }
 
-    fetchSkillGapData()
+    loadData()
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   if (isLoading) {
-    return <LoadingState message="Calculating objective skill gap matrix..." minHeight="min-h-[350px]" />
+    return <LoadingState message="Analyzing your skill gap matrix..." minHeight="min-h-[350px]" />
   }
 
-  if (error || !readout) {
-    return <ErrorState message={error || 'Skill gap data is temporarily unavailable.'} />
-  }
+  const readinessScore = stats?.careerReadiness ?? 0
+  const strengths = gaps.filter((g) => g.gap <= 0 || g.currentLevel >= g.targetLevel)
+  const focusAreas = gaps.filter((g) => g.gap > 0).sort((a, b) => b.gap - a.gap)
 
-  const snapshots = readout.snapshots || []
-  const metSkills = snapshots.filter((s) => s.gap === 0)
-  const gapSkills = snapshots.filter((s) => s.gap > 0).sort((a, b) => a.priorityRank - b.priorityRank)
+  const topGap = focusAreas[0]
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto animate-fadeIn py-2">
@@ -65,7 +76,7 @@ export const SkillGapPage: React.FC = () => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-pill text-[#1F6B4F] text-xs font-semibold">
               <Target className="w-3.5 h-3.5" />
-              Target Role: {readout.targetCareerTitle}
+              Target Role: {user?.careerGoal || DEFAULT_CAREER_GOAL}
             </div>
             <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[#171918]">
               Your skill gap is your roadmap.
@@ -78,10 +89,10 @@ export const SkillGapPage: React.FC = () => {
           <div className="p-4 rounded-xl glass-panel border-white/80 text-center sm:text-right shrink-0 hover-lift">
             <p className="text-xs text-[#626763]">Current Career Readiness</p>
             <p className="font-heading text-3xl font-extrabold text-[#1F6B4F]">
-              <AnimatedCounter value={readout.overallReadinessScore} suffix="%" />
+              <AnimatedCounter value={readinessScore} suffix="%" />
             </p>
             <span className="text-[11px] font-medium text-[#1F6B4F] bg-[#D8E8DE]/80 px-2.5 py-0.5 rounded-full mt-1 inline-block border border-[#C2D8C9]">
-              {readout.overallReadinessScore >= 70 ? 'Strong Trajectory' : readout.overallReadinessScore >= 40 ? 'Active Development' : 'Initial Calibration'}
+              {readinessScore >= 70 ? 'Strong Trajectory' : readinessScore >= 40 ? 'Progressing Well' : 'Starting Out'}
             </span>
           </div>
         </div>
@@ -90,56 +101,76 @@ export const SkillGapPage: React.FC = () => {
         <div className="pt-6 space-y-5">
           <div className="flex justify-between items-center text-xs font-semibold text-[#626763] uppercase tracking-wider">
             <span>Skill</span>
-            <span>Current vs. Target Level</span>
+            <span>Current vs. Target Benchmark</span>
           </div>
 
-          <div className="space-y-3.5">
-            {snapshots.map((item) => (
-              <div
-                key={item.skillId}
-                className="p-4 rounded-xl glass-panel border-white/80 space-y-2.5 transition-all duration-200 hover:border-[#1F6B4F]/40 hover-lift group"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <div>
-                    <span className="font-heading text-sm sm:text-base font-bold text-[#171918] group-hover:text-[#1F6B4F] transition-colors">
-                      {item.skillName}
-                    </span>
-                    <span className="text-xs text-[#626763] ml-2">({item.category})</span>
-                  </div>
-                  <div className="text-xs font-semibold">
-                    <span className="text-[#1F6B4F]">Current {item.currentLevel}%</span>
-                    <span className="text-[#8E948F] mx-2">→</span>
-                    <span className="text-[#171918]">Target {item.targetLevel}%</span>
-                  </div>
-                </div>
+          {gaps.length > 0 ? (
+            <div className="space-y-3.5">
+              {gaps.map((item) => {
+                const currentPct = Math.min(100, Math.round(item.currentLevel <= 5 ? item.currentLevel * 20 : item.currentLevel))
+                const targetPct = Math.min(100, Math.round(item.targetLevel <= 5 ? item.targetLevel * 20 : item.targetLevel))
+                const gapPct = Math.max(0, targetPct - currentPct)
 
-                {/* Overlaid Dual Bar */}
-                <div className="relative w-full h-3 bg-[#EAE8E1] rounded-full overflow-hidden">
+                return (
                   <div
-                    className="absolute top-0 bottom-0 left-0 bg-[#E5E5DF] rounded-full"
-                    style={{ width: `${item.targetLevel}%` }}
-                  />
-                  <div
-                    className={`absolute top-0 bottom-0 left-0 rounded-full transition-all duration-1000 ${
-                      item.currentLevel >= item.targetLevel
-                        ? 'bg-[#1F6B4F]'
-                        : item.currentLevel >= 50
-                        ? 'bg-[#1F6B4F] progress-shimmer'
-                        : 'bg-[#E7A84B] progress-shimmer'
-                    }`}
-                    style={{ width: `${item.currentLevel}%` }}
-                  />
-                </div>
+                    key={item.skillId || item.skillName}
+                    className="p-4 rounded-xl glass-panel border-white/80 space-y-2.5 transition-all duration-200 hover:border-[#1F6B4F]/40 hover-lift group"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <div>
+                        <span className="font-heading text-sm sm:text-base font-bold text-[#171918] group-hover:text-[#1F6B4F] transition-colors">
+                          {item.skillName}
+                        </span>
+                        <span className="text-xs text-[#626763] ml-2">({item.category || 'General'})</span>
+                      </div>
+                      <div className="text-xs font-semibold">
+                        <span className="text-[#1F6B4F]">Current {currentPct}%</span>
+                        <span className="text-[#8E948F] mx-2">→</span>
+                        <span className="text-[#171918]">Target {targetPct}%</span>
+                      </div>
+                    </div>
 
-                <div className="flex justify-between items-center text-[11px] text-[#626763]">
-                  <span>Status: {item.gapStatus}</span>
-                  <span className={item.gap > 0 ? 'text-[#A66E1D] font-semibold' : 'text-[#1F6B4F] font-semibold'}>
-                    {item.gap > 0 ? `Gap: +${item.gap}% needed` : 'Benchmark Met ✓'}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+                    {/* Overlaid Dual Bar */}
+                    <div className="relative w-full h-3 bg-[#EAE8E1] rounded-full overflow-hidden">
+                      {/* Target benchmark background fill */}
+                      <div
+                        className="absolute top-0 bottom-0 left-0 bg-[#E5E5DF] rounded-full"
+                        style={{ width: `${targetPct}%` }}
+                      />
+                      {/* Current progress fill with shimmer */}
+                      <div
+                        className={`absolute top-0 bottom-0 left-0 rounded-full transition-all duration-1000 ${
+                          currentPct >= targetPct
+                            ? 'bg-[#1F6B4F]'
+                            : currentPct >= 50
+                            ? 'bg-[#1F6B4F] progress-shimmer'
+                            : 'bg-[#E7A84B] progress-shimmer'
+                        }`}
+                        style={{ width: `${currentPct}%` }}
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center text-[11px] text-[#626763]">
+                      <span>{currentPct >= targetPct ? 'Benchmark Met' : `${item.priority} Priority Gap`}</span>
+                      <span className={gapPct > 0 ? 'text-[#A66E1D] font-semibold' : 'text-[#1F6B4F] font-semibold'}>
+                        {gapPct > 0 ? `Gap: +${gapPct}% needed` : 'Benchmark Met ✓'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-xs text-[#626763] space-y-3">
+              <Award className="w-10 h-10 text-[#1F6B4F] mx-auto opacity-75" />
+              <p>No skill gaps calculated yet. Complete an assessment to evaluate your role benchmarks.</p>
+              <Link to={ROUTES.ASSESSMENT}>
+                <Button variant="outline" size="sm">
+                  Start Assessment
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -155,18 +186,18 @@ export const SkillGapPage: React.FC = () => {
             Competencies where you already meet or exceed target expectations:
           </p>
 
-          <ul className="space-y-3 pt-1">
-            {metSkills.length === 0 ? (
-              <li className="text-xs text-[#626763]">No verified target-met skills yet. Complete your roadmap modules to build mastery.</li>
-            ) : (
-              metSkills.map((str) => (
-                <li key={str.skillId} className="flex items-start gap-2.5 text-xs sm:text-sm text-[#171918]">
+          {strengths.length > 0 ? (
+            <ul className="space-y-3 pt-1">
+              {strengths.map((str, idx) => (
+                <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-[#171918]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#1F6B4F] mt-2 shrink-0" />
-                  <span><strong>{str.skillName}</strong>: {str.currentLevel}% (Target: {str.targetLevel}%)</span>
+                  <span>{str.skillName} (Benchmark met)</span>
                 </li>
-              ))
-            )}
-          </ul>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-[#626763] pt-2 italic">Complete assessments to showcase verified strengths.</p>
+          )}
         </Card>
 
         {/* Focus Next */}
@@ -179,23 +210,25 @@ export const SkillGapPage: React.FC = () => {
             Highest-priority skills to study next to close your gap:
           </p>
 
-          <div className="space-y-2.5 pt-1">
-            {gapSkills.length === 0 ? (
-              <p className="text-xs text-[#626763]">All target skills are met! No active gaps.</p>
-            ) : (
-              gapSkills.slice(0, 3).map((focus, idx) => (
-                <div key={focus.skillId} className="p-3 rounded-xl glass-panel border-white/70 space-y-1">
+          {focusAreas.length > 0 ? (
+            <div className="space-y-2.5 pt-1">
+              {focusAreas.slice(0, 3).map((focus, idx) => (
+                <div key={idx} className="p-3 rounded-xl glass-panel border-white/70 space-y-1">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-[#171918]">{focus.skillName}</span>
-                    <Badge variant="warning" size="sm">Priority #{idx + 1}</Badge>
+                    <Badge variant={focus.priority === 'HIGH' ? 'warning' : 'outline'} size="sm">
+                      {focus.priority}
+                    </Badge>
                   </div>
                   <p className="text-[11px] text-[#626763]">
-                    Current {focus.currentLevel}% $\to$ Target {focus.targetLevel}%. Importance: {focus.importance}.
+                    {focus.recommendedAction || `Focus on closing the ${focus.skillName} gap.`}
                   </p>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-[#626763] pt-2 italic">No priority skill gaps identified.</p>
+          )}
         </Card>
       </div>
 
@@ -206,9 +239,9 @@ export const SkillGapPage: React.FC = () => {
             Path Synthesis
           </span>
           <p className="font-heading text-base sm:text-lg font-semibold text-[#171918] leading-relaxed">
-            {gapSkills.length > 0
-              ? `“Your top priority focus is ${gapSkills[0].skillName}. Closing this ${gapSkills[0].gap}% gap will accelerate your progress toward becoming a ${readout.targetCareerTitle}.”`
-              : `“You have met all required skill benchmarks for ${readout.targetCareerTitle}!”`}
+            {topGap
+              ? `“Closing your ${topGap.skillName} gap will yield the highest immediate momentum toward your goal.”`
+              : '“Keep building hands-on projects and verifying your competencies with diagnostic assessments.”'}
           </p>
         </div>
 

@@ -14,16 +14,19 @@ export interface AssessmentQuestion {
   type?: QuestionType
   options: QuestionOptionType[]
   codeSnippet?: string
-  category?: string
-  difficulty?: 'EASY' | 'MEDIUM' | 'HARD'
-  points?: number
-  skillId?: string
+  category: string
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD'
+  correctOptionId?: string
+  explanation?: string
 }
 
 export interface AssessmentSubmission {
-  assessmentId?: string
-  answers?: Record<string, string> | Array<{ questionId: string; selectedOptionId: string; timeTakenSeconds?: number }>
-  timeSpentSeconds?: number
+  assessmentId: string
+  answers: Record<string, string> // questionId -> optionId
+  timeSpentSeconds: number
+  tabSwitches?: number
+  violations?: number
+  integrityStatus?: 'VERIFIED' | 'WARNING_ISSUED' | 'TERMINATED_VIOLATION'
 }
 
 export interface AssessmentResult {
@@ -42,4 +45,7 @@ export interface AssessmentResult {
   }[]
   identifiedGaps: string[]
   recommendedRoadmapSteps: string[]
+  tabSwitches?: number
+  violations?: number
+  integrityStatus?: 'VERIFIED' | 'WARNING_ISSUED' | 'TERMINATED_VIOLATION'
 }

@@ -17,6 +17,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react'
+import { LANDING_PREVIEW } from '@/data/demo.landing'
 
 export const LandingPage: React.FC = () => {
   return (
@@ -72,13 +73,13 @@ export const LandingPage: React.FC = () => {
             {/* Floating Top-Right Frosted Glass Badge */}
             <div className="hidden sm:flex absolute -top-4 -right-4 glass-pill rounded-full px-4 py-2 shadow-lg items-center gap-2.5 animate-float z-30">
               <div className="w-2 h-2 rounded-full bg-[#1F6B4F] animate-pulse" />
-              <span className="text-xs font-semibold text-[#171918]">Roadmap Calibrated</span>
+              <span className="text-xs font-semibold text-[#171918]">{LANDING_PREVIEW.streakBadgeLabel}</span>
             </div>
 
             {/* Floating Bottom-Left Frosted Glass Badge */}
             <div className="hidden sm:flex absolute -bottom-4 -left-4 glass-pill rounded-full px-4 py-2 shadow-lg items-center gap-2.5 animate-float-reverse z-30">
               <span className="text-xs">🔥</span>
-              <span className="text-xs font-bold text-[#A66E1D]">12-Day Study Streak</span>
+              <span className="text-xs font-bold text-[#A66E1D]">{LANDING_PREVIEW.streakLabel}</span>
             </div>
 
             {/* Senior 25+ Yrs Glass Dashboard Mockup */}
@@ -103,12 +104,12 @@ export const LandingPage: React.FC = () => {
               {/* Student Header */}
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-heading text-sm sm:text-base font-bold text-[#171918]">Alex Patel</h3>
-                  <p className="text-xs text-[#626763]">Targeting Frontend Developer • BCA Sem 3</p>
+                  <h3 className="font-heading text-sm sm:text-base font-bold text-[#171918]">{LANDING_PREVIEW.dashboardSubtitle.split(' • ')[0]}</h3>
+                  <p className="text-xs text-[#626763]">{LANDING_PREVIEW.dashboardSubtitle}</p>
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-semibold text-[#1F6B4F] bg-[#D8E8DE]/80 px-2.5 py-0.5 rounded-full border border-[#C2D8C9]">
-                    72% Career Match
+                    {LANDING_PREVIEW.careerMatchPercent}% Career Match
                   </span>
                 </div>
               </div>
@@ -118,19 +119,19 @@ export const LandingPage: React.FC = () => {
                 <div className="p-2.5 rounded-xl glass-panel border-white/60">
                   <p className="text-[10px] text-[#626763]">Readiness</p>
                   <p className="font-heading text-base font-bold text-[#171918]">
-                    <AnimatedCounter value={72} suffix="%" />
+                    <AnimatedCounter value={LANDING_PREVIEW.metrics.readiness} suffix="%" />
                   </p>
                 </div>
                 <div className="p-2.5 rounded-xl glass-panel border-white/60">
                   <p className="text-[10px] text-[#626763]">Learning Progress</p>
                   <p className="font-heading text-base font-bold text-[#171918]">
-                    <AnimatedCounter value={64} suffix="%" />
+                    <AnimatedCounter value={LANDING_PREVIEW.metrics.learningProgress} suffix="%" />
                   </p>
                 </div>
                 <div className="p-2.5 rounded-xl glass-panel border-white/60">
                   <p className="text-[10px] text-[#626763]">Streak</p>
                   <p className="font-heading text-base font-bold text-[#E7A84B] flex items-center gap-1">
-                    <AnimatedCounter value={12} suffix="d" /> 🔥
+                    <AnimatedCounter value={LANDING_PREVIEW.metrics.streak} suffix="d" /> 🔥
                   </p>
                 </div>
               </div>
@@ -138,22 +139,22 @@ export const LandingPage: React.FC = () => {
               {/* In-Progress Course Card */}
               <div className="p-3.5 rounded-xl glass-panel border-white/70 space-y-2 mb-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#171918]">JavaScript Fundamentals</span>
+                  <span className="font-bold text-[#171918]">{LANDING_PREVIEW.activeCourseTitle}</span>
                   <span className="text-[11px] text-[#626763] flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-[#1F6B4F]" /> 35m left
+                    <Clock className="w-3 h-3 text-[#1F6B4F]" /> {LANDING_PREVIEW.activeCourseTimeLeft}
                   </span>
                 </div>
-                <ProgressBar value={64} size="sm" variant="forest" />
+                <ProgressBar value={LANDING_PREVIEW.activeCourseProgress} size="sm" variant="forest" />
               </div>
 
               {/* Miniature Roadmap Snippet */}
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between text-[11px] text-[#626763]">
-                  <span>Next milestone: Stage 03 — Git & GitHub</span>
-                  <span className="font-semibold text-[#E7A84B]">54%</span>
+                  <span>Next milestone: {LANDING_PREVIEW.nextMilestoneLabel}</span>
+                  <span className="font-semibold text-[#E7A84B]">{LANDING_PREVIEW.nextMilestoneProgress}%</span>
                 </div>
                 <div className="w-full bg-[#EAE8E1] h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-[#E7A84B] h-full w-[54%] progress-shimmer" />
+                  <div className="bg-[#E7A84B] h-full progress-shimmer" style={{ width: `${LANDING_PREVIEW.nextMilestoneProgress}%` }} />
                 </div>
               </div>
             </GlassCard>

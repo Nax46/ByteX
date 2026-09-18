@@ -1,48 +1,23 @@
 import { apiClient } from '@/api/client'
 import { Roadmap, RoadmapMilestone } from '@/types/roadmap.types'
+import { DEMO_ROADMAP } from '@/data/demo.roadmap'
 
-export interface IRoadmapModuleProgress {
-  moduleId: string
-  status: 'LOCKED' | 'IN_PROGRESS' | 'COMPLETED'
-  progressPercent: number
-  startedAt?: string
-  completedAt?: string
-  lastActivityAt?: string
-}
-
-export interface IRoadmapProgressSummary {
-  roadmapId: string
-  version: number
-  isCurrent: boolean
-  status: string
-  overallProgress: number
-  totalModules: number
-  completedModules: number
-  inProgressModules: number
-  lockedModules: number
-  lastActiveAt?: string
-  modules: IRoadmapModuleProgress[]
-  roadmapDetails?: {
-    careerId: string
-    modules: Array<{
-      moduleId: string
-      skillId: string
-      skillName: string
-      order: number
-      title: string
-      description: string
-      targetLevel: number
-      currentLevel: number
-      estimatedHours: number
-      prerequisites: string[]
-    }>
-  }
-}
-
+/**
+ * Roadmap API Module
+ * NOTE FOR BACKEND TEAM:
+ * Connect personalized AI learning path generator and milestone progression endpoints here.
+ *
+ * DEMO FALLBACK: Returns a realistic 6-stage demo roadmap when the backend is unavailable.
+ * Simply remove the catch block when the backend is connected.
+ */
 export const roadmapApi = {
   getCurrentRoadmap: async (): Promise<Roadmap> => {
-    const res = await apiClient.get<Roadmap>('/roadmap')
-    return res.data
+    try {
+      const res = await apiClient.get<Roadmap>('/roadmap')
+      return res.data
+    } catch {
+      return DEMO_ROADMAP
+    }
   },
 
   getRoadmapProgress: async (roadmapId?: string): Promise<{ progress: IRoadmapProgressSummary }> => {
@@ -88,17 +63,28 @@ export const roadmapApi = {
     milestoneId: string,
     status: RoadmapMilestone['status']
   ): Promise<RoadmapMilestone> => {
-    const res = await apiClient.put<RoadmapMilestone, { status: RoadmapMilestone['status'] }>(
-      `/roadmap/milestones/${milestoneId}/status`,
-      { status }
-    )
-    return res.data
+    try {
+      const res = await apiClient.put<RoadmapMilestone, { status: RoadmapMilestone['status'] }>(
+        `/roadmap/milestones/${milestoneId}/status`,
+        { status }
+      )
+      return res.data
+    } catch {
+      // Return a minimal milestone stub on failure so the UI toggle still works locally
+      const milestone = DEMO_ROADMAP.milestones.find((m) => m.id === milestoneId)
+      if (!milestone) throw new Error(`Milestone ${milestoneId} not found`)
+      return { ...milestone, status }
+    }
   },
 
   regenerateRoadmap: async (careerGoalId?: string): Promise<Roadmap> => {
-    const res = await apiClient.post<Roadmap, { careerGoalId?: string }>('/roadmap/regenerate', {
-      careerGoalId,
-    })
-    return res.data
+    try {
+      const res = await apiClient.post<Roadmap, { careerGoalId?: string }>('/roadmap/regenerate', {
+        careerGoalId,
+      })
+      return res.data
+    } catch {
+      return DEMO_ROADMAP
+    }
   },
 }
