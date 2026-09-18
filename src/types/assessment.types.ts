@@ -11,12 +11,17 @@ export interface AssessmentQuestion {
   codeSnippet?: string
   category: string
   difficulty: 'EASY' | 'MEDIUM' | 'HARD'
+  correctOptionId?: string
+  explanation?: string
 }
 
 export interface AssessmentSubmission {
   assessmentId: string
   answers: Record<string, string> // questionId -> optionId
   timeSpentSeconds: number
+  tabSwitches?: number
+  violations?: number
+  integrityStatus?: 'VERIFIED' | 'WARNING_ISSUED' | 'TERMINATED_VIOLATION'
 }
 
 export interface AssessmentResult {
@@ -35,4 +40,7 @@ export interface AssessmentResult {
   }[]
   identifiedGaps: string[]
   recommendedRoadmapSteps: string[]
+  tabSwitches?: number
+  violations?: number
+  integrityStatus?: 'VERIFIED' | 'WARNING_ISSUED' | 'TERMINATED_VIOLATION'
 }

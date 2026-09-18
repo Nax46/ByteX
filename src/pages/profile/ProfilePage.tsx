@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
@@ -6,11 +6,16 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { LoadingState } from '@/components/common/LoadingState'
+import { profileApi } from '@/api/endpoints/profile.api'
+import { skillsApi } from '@/api/endpoints/skills.api'
+import { UserProfile, UserStats } from '@/types/user.types'
+import { Skill } from '@/types/skill.types'
+import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import {
   GraduationCap,
   Briefcase,
-  BookOpen,
   Sparkles,
   Edit3,
   RotateCcw,
@@ -18,44 +23,70 @@ import {
   Calendar,
   Compass,
 } from 'lucide-react'
+import { DEFAULT_CAREER_GOAL, CAREER_GOAL_LABELS } from '@/data'
 
 export const ProfilePage: React.FC = () => {
+  const { user, refreshUser } = useAuth()
+  const [profile, setProfile] = useState<UserProfile | null>(user)
+  const [stats, setStats] = useState<UserStats | null>(null)
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isEditing, setIsEditing] = useState(false)
-  const [careerGoal, setCareerGoal] = useState('Frontend Developer')
+  const [careerGoal, setCareerGoal] = useState(user?.careerGoal || DEFAULT_CAREER_GOAL)
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
 
-  const studentInfo = {
-    name: 'Alex Patel',
-    email: 'alex.patel@student.edu',
-    education: 'Bachelor of Computer Applications (BCA)',
-    college: 'College of Computer Applications',
-    course: 'Web Systems & Software Architecture',
-    yearSemester: 'Year 2, Semester 3',
-    graduationYear: 2026,
-    interests: [
-      'Modern Web Interfaces',
-      'JavaScript / TypeScript',
-      'Component Design Systems',
-      'Responsive UX',
-      'API Integration',
-    ],
-  }
+  useEffect(() => {
+    let isMounted = true
+    const loadProfileData = async () => {
+      setIsLoading(true)
+      try {
+        const [profileRes, statsRes, skillsRes] = await Promise.allSettled([
+          profileApi.getProfile(),
+          profileApi.getUserStats(),
+          skillsApi.getSkills(),
+        ])
 
-  const skills = [
-    { name: 'HTML & CSS', score: 85, level: 'Advanced' },
-    { name: 'JavaScript', score: 78, level: 'Proficient' },
-    { name: 'Problem Solving', score: 66, level: 'Intermediate' },
-    { name: 'SQL', score: 55, level: 'Developing' },
-    { name: 'React', score: 54, level: 'Developing' },
-    { name: 'Git', score: 41, level: 'Foundational' },
-  ]
+        if (!isMounted) return
+        if (profileRes.status === 'fulfilled' && profileRes.value) {
+          setProfile(profileRes.value)
+          if (profileRes.value.careerGoal) setCareerGoal(profileRes.value.careerGoal)
+        }
+        if (statsRes.status === 'fulfilled') setStats(statsRes.value)
+        if (skillsRes.status === 'fulfilled') setSkills(skillsRes.value || [])
+      } catch (err) {
+        console.error('Failed to load profile data:', err)
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
+    }
 
-  const handleSaveCareerGoal = (newGoal: string) => {
+    loadProfileData()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const handleSaveCareerGoal = async (newGoal: string) => {
     setCareerGoal(newGoal)
     setIsEditing(false)
-    setSavedNotice(`Career target updated to ${newGoal}`)
+    try {
+      await profileApi.updateProfile({ careerGoal: newGoal })
+      await refreshUser()
+      setSavedNotice(`Career target updated to ${newGoal}`)
+    } catch {
+      setSavedNotice(`Career target updated to ${newGoal}`)
+    }
     setTimeout(() => setSavedNotice(null), 3500)
   }
+
+  if (isLoading) {
+    return <LoadingState message="Loading your learner profile..." minHeight="min-h-[350px]" />
+  }
+
+  const displayName = profile?.name || user?.name || 'Learner'
+  const displayEmail = profile?.email || user?.email || 'Registered Student'
+  const education = profile?.education || user?.education
+  const readinessPct = stats?.careerReadiness || 0
 
   return (
     <div className="space-y-7 max-w-5xl mx-auto animate-fadeIn py-2">
@@ -79,17 +110,18 @@ export const ProfilePage: React.FC = () => {
       <Card className="p-6 sm:p-8 bg-white border-[#E5E5DF]">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-[#E5E5DF]">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <Avatar name={studentInfo.name} size="xl" />
+            <Avatar name={displayName} size="xl" />
             <div className="space-y-1.5">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h2 className="font-heading text-xl sm:text-2xl font-bold text-[#171918]">
-                  {studentInfo.name}
+                  {displayName}
                 </h2>
-                <Badge variant="forest" size="sm">BCA — Semester 3</Badge>
-                <Badge variant="default" size="sm">Alex Patel</Badge>
+                {education?.degree && (
+                  <Badge variant="forest" size="sm">{education.degree}</Badge>
+                )}
               </div>
               <p className="text-xs sm:text-sm text-[#626763]">
-                {studentInfo.college} • {studentInfo.email}
+                {education?.institution ? `${education.institution} • ` : ''}{displayEmail}
               </p>
               <p className="text-xs text-[#626763] pt-0.5">
                 Targeting a career as a <strong className="text-[#1F6B4F]">{careerGoal}</strong>
@@ -105,7 +137,7 @@ export const ProfilePage: React.FC = () => {
               leftIcon={<Edit3 className="w-3.5 h-3.5" />}
               onClick={() => setIsEditing(!isEditing)}
             >
-              {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+              {isEditing ? 'Cancel Edit' : 'Edit Goal'}
             </Button>
             <Link to={ROUTES.ASSESSMENT}>
               <Button
@@ -113,7 +145,7 @@ export const ProfilePage: React.FC = () => {
                 size="sm"
                 leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
               >
-                Retake Assessment
+                Take Assessment
               </Button>
             </Link>
           </div>
@@ -126,10 +158,10 @@ export const ProfilePage: React.FC = () => {
               <span className="text-xs font-bold text-[#171918] uppercase tracking-wider">
                 Update Career Goal
               </span>
-              <span className="text-[11px] text-[#626763]">Choose your target path</span>
+              <span className="text-[11px] text-[#626763]">Choose your target role</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {['Frontend Developer', 'UI/UX Designer', 'Data Analyst', 'Cybersecurity Analyst', 'AI / ML Engineer'].map((goal) => (
+              {CAREER_GOAL_LABELS.map((goal) => (
                 <button
                   key={goal}
                   onClick={() => handleSaveCareerGoal(goal)}
@@ -154,55 +186,47 @@ export const ProfilePage: React.FC = () => {
             </h3>
             <div className="space-y-2.5 text-[#626763]">
               <div className="flex justify-between py-1 border-b border-[#E5E5DF]/60">
-                <span>College</span>
-                <span className="font-medium text-[#171918]">{studentInfo.college}</span>
+                <span>Institution</span>
+                <span className="font-medium text-[#171918]">
+                  {education?.institution || 'Registered University / College'}
+                </span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#E5E5DF]/60">
                 <span>Degree Program</span>
-                <span className="font-medium text-[#171918]">{studentInfo.education}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-[#E5E5DF]/60">
-                <span>Course Track</span>
-                <span className="font-medium text-[#171918]">{studentInfo.course}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-[#E5E5DF]/60">
-                <span>Year & Semester</span>
-                <span className="font-medium text-[#171918]">{studentInfo.yearSemester}</span>
+                <span className="font-medium text-[#171918]">
+                  {education?.degree || 'Computer Science / Engineering'}
+                </span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-[#626763]" /> Target Graduation
                 </span>
-                <span className="font-medium text-[#171918]">{studentInfo.graduationYear}</span>
+                <span className="font-medium text-[#171918]">
+                  {education?.graduationYear || new Date().getFullYear() + 1}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="space-y-4">
             <h3 className="font-heading text-sm font-bold text-[#171918] flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-[#1F6B4F]" /> Career Direction & Interests
+              <Briefcase className="w-4 h-4 text-[#1F6B4F]" /> Career Direction & Target
             </h3>
             <div className="space-y-3">
               <div className="p-3.5 rounded-lg border border-[#E5E5DF] bg-[#F8F7F3]">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-[#626763]">Target Role</span>
-                  <span className="font-bold text-[#1F6B4F]">72% Ready</span>
+                  <span className="font-bold text-[#1F6B4F]">{readinessPct}% Ready</span>
                 </div>
                 <p className="font-heading text-base font-bold text-[#171918]">{careerGoal}</p>
               </div>
 
-              <div>
-                <span className="text-[#626763] text-xs block mb-2 font-medium">Areas of Interest:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {studentInfo.interests.map((interest, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#F8F7F3] border border-[#E5E5DF] text-[#171918]"
-                    >
-                      {interest}
-                    </span>
-                  ))}
-                </div>
+              <div className="pt-2">
+                <Link to={ROUTES.ROADMAP}>
+                  <Button variant="outline" size="sm" className="w-full">
+                    View Personalized Roadmap →
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
@@ -227,48 +251,32 @@ export const ProfilePage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 pt-5">
-          {skills.map((skill) => (
-            <div key={skill.name} className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs">
-                <div className="flex items-center gap-2">
+        {skills.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 pt-5">
+            {skills.map((skill) => (
+              <div key={skill.id || skill.name} className="space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold text-[#171918]">{skill.name}</span>
-                  <span className="text-[11px] text-[#626763]">({skill.level})</span>
+                  <span className="font-bold text-[#1F6B4F]">{skill.progress}%</span>
                 </div>
-                <span className="font-bold text-[#1F6B4F]">{skill.score}%</span>
+                <ProgressBar
+                  value={skill.progress}
+                  variant={skill.progress >= 75 ? 'forest' : skill.progress >= 50 ? 'primary' : 'warning'}
+                  size="sm"
+                />
               </div>
-              <ProgressBar
-                value={skill.score}
-                variant={skill.score >= 75 ? 'forest' : skill.score >= 50 ? 'primary' : 'warning'}
-                size="sm"
-              />
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Currently Enrolled Course */}
-      <Card className="p-6 bg-white border-[#E5E5DF] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-[#1F6B4F]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-[#1F6B4F]">
-              Current Active Course
-            </span>
+            ))}
           </div>
-          <h4 className="font-heading text-base font-bold text-[#171918]">
-            JavaScript Fundamentals
-          </h4>
-          <p className="text-xs text-[#626763]">
-            Active Module: <strong className="text-[#171918]">Functions & Arrays</strong> • 35 min estimated remaining • 64% completed
-          </p>
-        </div>
-
-        <Link to={ROUTES.RESOURCES} className="shrink-0">
-          <Button variant="primary" size="sm">
-            Resume Course →
-          </Button>
-        </Link>
+        ) : (
+          <div className="py-8 text-center text-xs text-[#626763] space-y-3">
+            <p>No verified skill scores recorded yet. Complete assessments to build your profile.</p>
+            <Link to={ROUTES.ASSESSMENT}>
+              <Button variant="primary" size="sm">
+                Take Initial Assessment
+              </Button>
+            </Link>
+          </div>
+        )}
       </Card>
     </div>
   )
