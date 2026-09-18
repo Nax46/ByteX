@@ -16,7 +16,6 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -47,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed })
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col border-r border-[#E5E5DF] bg-white transition-all duration-200 z-30 select-none h-screen sticky top-0',
+        'hidden md:flex flex-col border-r border-[#E5E5DF] bg-white transition-all duration-200 z-30 select-none fixed inset-y-0 left-0',
         isCollapsed ? 'w-20' : 'w-64'
       )}
     >
@@ -120,17 +119,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed })
 
       {/* Bottom Navigation */}
       <div className="border-t border-[#E5E5DF] p-3 space-y-1">
-        <NavLink
-          to={ROUTES.ADMIN_DASHBOARD}
-          title={isCollapsed ? 'Admin Panel' : undefined}
-          className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-[#1F6B4F] bg-[#D8E8DE]/40 hover:bg-[#D8E8DE]/80',
-            location.pathname.startsWith('/admin') && 'bg-[#D8E8DE] font-semibold'
-          )}
-        >
-          <ShieldCheck className="w-4 h-4 shrink-0 text-[#1F6B4F]" />
-          {!isCollapsed && <span className="truncate font-semibold">Admin Panel</span>}
-        </NavLink>
 
         <NavLink
           to={ROUTES.SETTINGS}

@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { SkillPathLogo } from '@/components/ui/SkillPathLogo'
 import { isValidEmail } from '@/utils/validation'
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react'
 
-export const LoginPage: React.FC = () => {
-  const { login, isLoading, error, clearError } = useAuth()
+export const AdminLoginPage: React.FC = () => {
+  const { login, logout, isLoading, error, clearError } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -28,7 +28,7 @@ export const LoginPage: React.FC = () => {
     setValidationError(null)
 
     if (!email) {
-      setValidationError('Please enter your email address.')
+      setValidationError('Please enter your administrator email.')
       return
     }
 
@@ -44,53 +44,68 @@ export const LoginPage: React.FC = () => {
 
     try {
       await login({ email, password, rememberMe })
-      
-      // Route based on role
-      const normalizedEmail = email.trim().toLowerCase()
-      const isAdmin = normalizedEmail === 'admin@skillpath.demo'
 
-      if (isAdmin) {
-        navigate(ROUTES.ADMIN_DASHBOARD, { replace: true })
-      } else {
-        const target = fromLocation && !fromLocation.startsWith('/admin') ? fromLocation : ROUTES.DASHBOARD
+      // Check role assignment
+      const normalizedEmail = email.trim().toLowerCase()
+      const isAdminEmail = normalizedEmail === 'admin@skillpath.demo'
+
+      if (isAdminEmail) {
+        const target = fromLocation && fromLocation.startsWith('/admin') ? fromLocation : ROUTES.ADMIN_DASHBOARD
         navigate(target, { replace: true })
+      } else {
+        // Log out immediately if a non-admin signed in here
+        logout()
+        setValidationError('Access Denied: This account does not have administrative privileges.')
       }
     } catch {
-      // Error handled by AuthContext
+      // Error is set in AuthContext state
     }
   }
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-10 bg-[#F8F7F3]">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#F8F7F3]">
       <div className="w-full max-w-md space-y-6 animate-fadeIn">
-        {/* Header Branding */}
-        <div className="text-center space-y-2">
-          <Link to={ROUTES.HOME} className="inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F6B4F] rounded-lg">
+        {/* Header Security Branding */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-white border border-[#E5E5DF] shadow-2xs mb-1">
             <SkillPathLogo size="md" />
-          </Link>
+          </div>
+
           <div>
-            <h2 className="font-heading text-2xl font-bold tracking-tight text-[#171918]">Welcome back</h2>
-            <p className="text-xs text-[#626763] mt-1">
-              Sign in to continue your personalized SkillPath journey.
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1F6B4F]/10 border border-[#1F6B4F]/20 text-[#1F6B4F] text-[11px] font-bold uppercase tracking-wider mb-2">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin Console • Restricted Access</span>
+            </div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-[#171918]">
+              Administrator Sign In
+            </h1>
+            <p className="text-xs text-[#626763] mt-1.5 max-w-sm mx-auto leading-relaxed">
+              Authenticate with your institutional administrator credentials to manage cohorts, curriculum, and diagnostic assessments.
             </p>
           </div>
         </div>
 
-        {/* Main Login Card */}
+        {/* Main Admin Login Card */}
         <Card className="p-6 sm:p-8 bg-white border-[#E5E5DF] shadow-sm">
           {(error || validationError) && (
-            <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-700 animate-fadeIn">
+            <div
+              role="alert"
+              className="mb-5 p-3.5 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-700 animate-fadeIn"
+            >
               <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
-              <span>{validationError || error}</span>
+              <div>
+                <p className="font-semibold">Authentication Failed</p>
+                <p className="mt-0.5">{validationError || error}</p>
+              </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              id="login-email"
-              label="Email Address"
+              id="admin-login-email"
+              label="Admin Email"
               type="email"
-              placeholder="student@skillpath.demo"
+              placeholder="admin@skillpath.demo"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value)
@@ -102,7 +117,7 @@ export const LoginPage: React.FC = () => {
             />
 
             <Input
-              id="login-password"
+              id="admin-login-password"
               label="Password"
               type={showPassword ? 'text' : 'password'}
               placeholder="••••••••"
@@ -134,37 +149,39 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="rounded border-[#E5E5DF] text-[#1F6B4F] focus:ring-[#1F6B4F] h-3.5 w-3.5"
                 />
-                <span>Remember me</span>
+                <span>Keep me signed in</span>
               </label>
 
-              <button
-                type="button"
-                onClick={() => alert('Password reset instructions will be sent to your registered email address.')}
-                className="text-[#1F6B4F] hover:underline transition-colors cursor-pointer"
-              >
-                Forgot password?
-              </button>
+              <span className="text-[11px] text-[#8E948F]">
+                Institutional SSO
+              </span>
             </div>
 
             <Button
               type="submit"
               variant="primary"
-              className="w-full mt-2"
+              className="w-full mt-2 justify-center"
               isLoading={isLoading}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              Sign In
+              Sign In to Admin Console
             </Button>
           </form>
         </Card>
 
-        {/* Footer link */}
-        <p className="text-center text-xs text-[#626763]">
-          Don't have an account?{' '}
-          <Link to={ROUTES.REGISTER} className="text-[#1F6B4F] hover:underline font-semibold">
-            Create an account
+        {/* Footer link to return to main website */}
+        <div className="text-center">
+          <Link
+            to={ROUTES.HOME}
+            className="inline-flex items-center gap-1.5 text-xs text-[#626763] hover:text-[#1F6B4F] transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to SkillPath Public Platform</span>
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   )
 }
+
+export default AdminLoginPage

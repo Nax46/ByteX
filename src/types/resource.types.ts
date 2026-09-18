@@ -1,5 +1,7 @@
 export type ResourceType = 'ARTICLE' | 'VIDEO' | 'COURSE' | 'DOCUMENTATION' | 'BOOK'
 
+export type ResourceLevel = 'Beginner' | 'Intermediate' | 'Advanced'
+
 export interface LearningResource {
   id: string
   title: string
@@ -9,6 +11,7 @@ export interface LearningResource {
   provider: string // e.g., MDN, Coursera, YouTube, Official Docs
   skillTag: string
   estimatedDuration: string
+  level?: ResourceLevel
   isCompleted?: boolean
   rating?: number
 }

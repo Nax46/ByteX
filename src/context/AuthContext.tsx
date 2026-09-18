@@ -8,7 +8,8 @@ import { UserProfile } from '@/types/user.types'
 import { storageService } from '@/services/storage.service'
 import { authService } from '@/services/authService'
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(() => storageService.getUser())

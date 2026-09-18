@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -8,14 +8,20 @@ import { LoadingState } from '@/components/common/LoadingState'
 import { resourcesApi } from '@/api/endpoints/resources.api'
 import { LearningResource } from '@/types/resource.types'
 import { ROUTES } from '@/constants/routes'
-import { Search, ExternalLink, Clock, BookOpen } from 'lucide-react'
+import { Search, ExternalLink, Clock, BookOpen, X, SlidersHorizontal } from 'lucide-react'
+
+type SortOption = 'RECOMMENDED' | 'TITLE_ASC' | 'TITLE_DESC' | 'RATING_DESC'
 
 export const ResourcesPage: React.FC = () => {
   const [resources, setResources] = useState<LearningResource[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
+
+  // Filter States
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedType, setSelectedType] = useState<string>('ALL')
   const [selectedSkill, setSelectedSkill] = useState<string>('ALL')
+  const [selectedLevel, setSelectedLevel] = useState<string>('ALL')
+  const [selectedType, setSelectedType] = useState<string>('ALL')
+  const [sortBy, setSortBy] = useState<SortOption>('RECOMMENDED')
 
   useEffect(() => {
     let isMounted = true
@@ -51,103 +57,257 @@ export const ResourcesPage: React.FC = () => {
     }
   }
 
-  if (isLoading) {
-    return <LoadingState message="Curating high-quality learning resources..." minHeight="min-h-[350px]" />
+  // Derived filter options
+  const skillsList = useMemo(() => {
+    const uniqueSkills = Array.from(new Set(resources.map((r) => r.skillTag).filter(Boolean)))
+    return ['ALL', ...uniqueSkills]
+  }, [resources])
+
+  const typesList = useMemo(() => {
+    const uniqueTypes = Array.from(new Set(resources.map((r) => r.type).filter(Boolean)))
+    return ['ALL', ...uniqueTypes]
+  }, [resources])
+
+  const levelsList = ['ALL', 'Beginner', 'Intermediate', 'Advanced']
+
+  // Filter & Sort computation
+  const filteredAndSortedResources = useMemo(() => {
+    return resources
+      .filter((item) => {
+        const query = searchQuery.trim().toLowerCase()
+        const matchesSearch =
+          !query ||
+          item.title.toLowerCase().includes(query) ||
+          item.description.toLowerCase().includes(query) ||
+          item.skillTag?.toLowerCase().includes(query) ||
+          item.provider?.toLowerCase().includes(query)
+
+        const matchesSkill = selectedSkill === 'ALL' || item.skillTag === selectedSkill
+        const matchesLevel = selectedLevel === 'ALL' || item.level === selectedLevel
+        const matchesType = selectedType === 'ALL' || item.type === selectedType
+
+        return matchesSearch && matchesSkill && matchesLevel && matchesType
+      })
+      .sort((a, b) => {
+        if (sortBy === 'TITLE_ASC') {
+          return a.title.localeCompare(b.title)
+        }
+        if (sortBy === 'TITLE_DESC') {
+          return b.title.localeCompare(a.title)
+        }
+        if (sortBy === 'RATING_DESC') {
+          return (b.rating || 0) - (a.rating || 0)
+        }
+        // RECOMMENDED: Completed or rated resources first
+        return (b.rating || 3) - (a.rating || 3)
+      })
+  }, [resources, searchQuery, selectedSkill, selectedLevel, selectedType, sortBy])
+
+  const hasActiveFilters =
+    searchQuery.trim() !== '' ||
+    selectedSkill !== 'ALL' ||
+    selectedLevel !== 'ALL' ||
+    selectedType !== 'ALL' ||
+    sortBy !== 'RECOMMENDED'
+
+  const resetAllFilters = () => {
+    setSearchQuery('')
+    setSelectedSkill('ALL')
+    setSelectedLevel('ALL')
+    setSelectedType('ALL')
+    setSortBy('RECOMMENDED')
   }
 
-  const resourceTypes = [
-    'ALL',
-    ...Array.from(new Set(resources.map((r) => r.type).filter(Boolean))),
-  ]
-  const skillsList = [
-    'ALL',
-    ...Array.from(new Set(resources.map((r) => r.skillTag).filter(Boolean))),
-  ]
-
-  const filteredResources = resources.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.skillTag?.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesType = selectedType === 'ALL' || item.type === selectedType
-    const matchesSkill = selectedSkill === 'ALL' || item.skillTag === selectedSkill
-
-    return matchesSearch && matchesType && matchesSkill
-  })
+  if (isLoading) {
+    return <LoadingState message="Curating verified learning resources..." minHeight="min-h-[350px]" />
+  }
 
   return (
-    <div className="space-y-7 max-w-5xl mx-auto animate-fadeIn py-2">
+    <div className="space-y-6 max-w-6xl mx-auto animate-fadeIn py-2">
       <PageHeader
         title="Learning Resources"
-        subtitle="Handpicked courses, official documentation, practice exercises, and starter guides."
+        subtitle="Handpicked official documentation, practical courses, articles, and reference manuals."
         breadcrumbs={[
           { label: 'Dashboard', href: ROUTES.DASHBOARD },
           { label: 'Resources' },
         ]}
       />
 
-      {/* Search & Filters */}
-      <Card className="p-5 border-[#E5E5DF] bg-white space-y-4">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-[#8E948F] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search skills, courses, articles..."
-            className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg pl-10 pr-4 py-2 text-sm text-[#171918] placeholder-[#8E948F] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
-          />
+      {/* Structured Search & Filter Component (Task 10) */}
+      <Card className="p-5 sm:p-6 border-[#E5E5DF] bg-white shadow-xs space-y-4">
+        {/* Top: Search Area */}
+        <div className="space-y-1.5">
+          <label htmlFor="resource-search" className="block text-xs font-bold uppercase tracking-wider text-[#626763]">
+            Search
+          </label>
+          <div className="relative">
+            <Search className="w-4 h-4 text-[#8E948F] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              id="resource-search"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search resources by title, topic, or provider..."
+              className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg pl-10 pr-10 py-2.5 text-sm text-[#171918] placeholder-[#8E948F] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E948F] hover:text-[#171918] p-1 rounded-md"
+                aria-label="Clear search input"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 text-xs">
-          {resourceTypes.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              <span className="font-semibold text-[#626763] shrink-0">Type:</span>
-              {resourceTypes.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setSelectedType(type)}
-                  className={`px-2.5 py-1 rounded-md transition-all duration-200 shrink-0 font-medium cursor-pointer ${
-                    selectedType === type
-                      ? 'bg-[#1F6B4F] text-white shadow-2xs scale-[1.02]'
-                      : 'bg-[#F8F7F3] text-[#626763] hover:text-[#171918] border border-[#E5E5DF] hover:border-[#D0D0C8]'
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Filters Row: [ Skill ] [ Level ] [ Type ] [ Sort ] */}
+        <div className="pt-2 border-t border-[#E5E5DF]/70 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#626763]">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#1F6B4F]" />
+            <span>Filters & Organization</span>
+          </div>
 
-          {skillsList.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              <span className="font-semibold text-[#626763] shrink-0">Skill:</span>
-              {skillsList.map((skill) => (
-                <button
-                  key={skill}
-                  type="button"
-                  onClick={() => setSelectedSkill(skill)}
-                  className={`px-2.5 py-1 rounded-md transition-all duration-200 shrink-0 font-medium cursor-pointer ${
-                    selectedSkill === skill
-                      ? 'bg-[#1F6B4F] text-white shadow-2xs scale-[1.02]'
-                      : 'bg-[#F8F7F3] text-[#626763] hover:text-[#171918] border border-[#E5E5DF] hover:border-[#D0D0C8]'
-                  }`}
-                >
-                  {skill}
-                </button>
-              ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* 1. Skill Filter */}
+            <div className="space-y-1">
+              <label htmlFor="filter-skill" className="text-[11px] font-semibold text-[#626763]">
+                Skill Topic
+              </label>
+              <select
+                id="filter-skill"
+                value={selectedSkill}
+                onChange={(e) => setSelectedSkill(e.target.value)}
+                className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg px-3 py-2 text-xs font-medium text-[#171918] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
+              >
+                <option value="ALL">All Skills</option>
+                {skillsList
+                  .filter((s) => s !== 'ALL')
+                  .map((skill) => (
+                    <option key={skill} value={skill}>
+                      {skill}
+                    </option>
+                  ))}
+              </select>
             </div>
+
+            {/* 2. Level Filter */}
+            <div className="space-y-1">
+              <label htmlFor="filter-level" className="text-[11px] font-semibold text-[#626763]">
+                Skill Level
+              </label>
+              <select
+                id="filter-level"
+                value={selectedLevel}
+                onChange={(e) => setSelectedLevel(e.target.value)}
+                className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg px-3 py-2 text-xs font-medium text-[#171918] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
+              >
+                <option value="ALL">All Levels</option>
+                {levelsList
+                  .filter((l) => l !== 'ALL')
+                  .map((lvl) => (
+                    <option key={lvl} value={lvl}>
+                      {lvl}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* 3. Type Filter */}
+            <div className="space-y-1">
+              <label htmlFor="filter-type" className="text-[11px] font-semibold text-[#626763]">
+                Resource Type
+              </label>
+              <select
+                id="filter-type"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg px-3 py-2 text-xs font-medium text-[#171918] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
+              >
+                <option value="ALL">All Types</option>
+                {typesList
+                  .filter((t) => t !== 'ALL')
+                  .map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* 4. Sort Order */}
+            <div className="space-y-1">
+              <label htmlFor="filter-sort" className="text-[11px] font-semibold text-[#626763]">
+                Sort By
+              </label>
+              <select
+                id="filter-sort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg px-3 py-2 text-xs font-medium text-[#171918] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
+              >
+                <option value="RECOMMENDED">Recommended</option>
+                <option value="TITLE_ASC">Title (A - Z)</option>
+                <option value="TITLE_DESC">Title (Z - A)</option>
+                <option value="RATING_DESC">Highest Rated</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Results Info & Active Filter Tags Bar */}
+        <div className="pt-2 border-t border-[#E5E5DF]/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-[#171918]">
+              Showing {filteredAndSortedResources.length} of {resources.length} resources
+            </span>
+
+            {selectedSkill !== 'ALL' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D8E8DE]/60 text-[#1F6B4F] text-[11px] font-medium">
+                Skill: {selectedSkill}
+                <button type="button" onClick={() => setSelectedSkill('ALL')} className="hover:text-black">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {selectedLevel !== 'ALL' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D8E8DE]/60 text-[#1F6B4F] text-[11px] font-medium">
+                Level: {selectedLevel}
+                <button type="button" onClick={() => setSelectedLevel('ALL')} className="hover:text-black">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {selectedType !== 'ALL' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D8E8DE]/60 text-[#1F6B4F] text-[11px] font-medium">
+                Type: {selectedType}
+                <button type="button" onClick={() => setSelectedType('ALL')} className="hover:text-black">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="text-xs text-[#1F6B4F] hover:underline font-semibold cursor-pointer shrink-0"
+            >
+              Reset Filters
+            </button>
           )}
         </div>
       </Card>
 
       {/* Resource Cards Grid */}
-      {filteredResources.length > 0 ? (
+      {filteredAndSortedResources.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {filteredResources.map((res, index) => {
+          {filteredAndSortedResources.map((res, index) => {
             const staggerClass =
               index % 4 === 0 ? 'stagger-1' : index % 4 === 1 ? 'stagger-2' : index % 4 === 2 ? 'stagger-3' : 'stagger-4'
 
@@ -157,12 +317,20 @@ export const ResourcesPage: React.FC = () => {
                 className={`p-5 sm:p-6 border-[#E5E5DF] bg-white flex flex-col justify-between space-y-4 hover-lift animate-slideUp ${staggerClass} group`}
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="forest" size="sm">{res.skillTag || 'Curriculum'}</Badge>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-semibold text-[#626763]">{res.type}</span>
-                      <span className="text-[11px] text-[#8E948F]">•</span>
-                      <span className="text-[11px] text-[#8E948F]">{res.provider}</span>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="forest" size="sm">{res.skillTag || 'Curriculum'}</Badge>
+                      {res.level && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#E5E5DF] bg-[#F8F7F3] text-[#626763]">
+                          {res.level}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-[#8E948F]">
+                      <span className="font-semibold text-[#626763]">{res.type}</span>
+                      <span>•</span>
+                      <span>{res.provider}</span>
                     </div>
                   </div>
 
@@ -179,14 +347,14 @@ export const ResourcesPage: React.FC = () => {
                       value={res.isCompleted ? 100 : 0}
                       size="sm"
                       variant="forest"
-                      label={res.isCompleted ? 'Completed' : 'Not started'}
+                      label={res.isCompleted ? 'Completed' : 'Not completed'}
                       showPercentage={res.isCompleted}
                     />
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-[#E5E5DF] flex items-center justify-between text-xs">
-                  <span className="text-[#626763] flex items-center gap-1.5">
+                <div className="pt-3 border-t border-[#E5E5DF] flex items-center justify-between text-xs gap-2">
+                  <span className="text-[#626763] flex items-center gap-1.5 shrink-0">
                     <Clock className="w-3.5 h-3.5 text-[#1F6B4F]" />
                     {res.estimatedDuration || 'Self-paced'}
                   </span>
@@ -204,11 +372,12 @@ export const ResourcesPage: React.FC = () => {
                       href={res.url || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F6B4F] rounded-lg"
                     >
                       <Button
                         variant="primary"
                         size="sm"
-                        rightIcon={<ExternalLink className="w-3.5 h-3.5 group-hover-arrow" />}
+                        rightIcon={<ExternalLink className="w-3.5 h-3.5" />}
                       >
                         Open
                       </Button>
@@ -220,22 +389,18 @@ export const ResourcesPage: React.FC = () => {
           })}
         </div>
       ) : (
-        <Card className="p-8 text-center space-y-4 bg-white border-[#E5E5DF]">
+        <Card className="p-8 sm:p-12 text-center space-y-4 bg-white border-[#E5E5DF]">
           <BookOpen className="w-12 h-12 text-[#1F6B4F] mx-auto opacity-75" />
           <h3 className="font-heading text-lg font-bold text-[#171918]">No resources match your filters</h3>
-          <p className="text-xs text-[#626763] max-w-md mx-auto">
-            Try resetting your search query or selecting a different skill filter.
+          <p className="text-xs sm:text-sm text-[#626763] max-w-md mx-auto">
+            Try adjusting your search keywords, switching skill categories, or resetting filters to view all available materials.
           </p>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setSearchQuery('')
-              setSelectedType('ALL')
-              setSelectedSkill('ALL')
-            }}
+            onClick={resetAllFilters}
           >
-            Clear Filters
+            Reset All Filters
           </Button>
         </Card>
       )}
