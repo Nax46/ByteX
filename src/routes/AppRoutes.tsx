@@ -64,6 +64,35 @@ const AdminSettingsPage = React.lazy(() =>
   import('@/pages/admin/settings/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage }))
 )
 
+import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
+import { useAuth } from '@/hooks/useAuth'
+
+// Dedicated Direct-URL Admin Entry Guard & Authentication Resolver
+const AdminEntryRoute: React.FC = () => {
+  const { isAuthenticated, user, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F7F3]">
+        <DashboardSkeleton />
+      </div>
+    )
+  }
+
+  // If not logged in, render the dedicated Admin Login Page
+  if (!isAuthenticated) {
+    return <AdminLoginPage />
+  }
+
+  // If authenticated as an administrator, direct to Admin Dashboard
+  if (user?.role === 'admin') {
+    return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
+  }
+
+  // If a student user directly enters /admin, access is denied and they are sent to student dashboard
+  return <Navigate to={ROUTES.DASHBOARD} replace />
+}
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -110,6 +139,10 @@ export const AppRoutes: React.FC = () => {
         <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
       </Route>
 
+      {/* Direct /admin Access & Authentication Flow (Only direct-URL entry) */}
+      <Route path={ROUTES.ADMIN} element={<AdminEntryRoute />} />
+      <Route path="/admin/login" element={<AdminEntryRoute />} />
+
       {/* Authenticated Admin Portal with AdminLayout & Route-Level Suspense */}
       <Route
         element={
@@ -118,7 +151,6 @@ export const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       >
-        <Route path={ROUTES.ADMIN} element={<Navigate to={ROUTES.ADMIN_DASHBOARD} replace />} />
         <Route
           path={ROUTES.ADMIN_DASHBOARD}
           element={

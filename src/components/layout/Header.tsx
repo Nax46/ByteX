@@ -11,7 +11,6 @@ import {
   Settings,
   ChevronDown,
   BookOpen,
-  ShieldCheck,
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
@@ -122,14 +121,6 @@ export const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
                   >
                     <BookOpen className="w-3.5 h-3.5 text-[#1F6B4F]" />
                     My Learning Path
-                  </Link>
-                  <Link
-                    to={ROUTES.ADMIN_DASHBOARD}
-                    onClick={() => setProfileDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-xs text-[#1F6B4F] font-semibold bg-[#D8E8DE]/30 hover:bg-[#D8E8DE]/60 transition-colors"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#1F6B4F]" />
-                    Admin Panel
                   </Link>
                   <Link
                     to={ROUTES.SETTINGS}

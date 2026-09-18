@@ -71,4 +71,20 @@ describe('Auth Contract and clearError verification', () => {
     expect(admin).toBeDefined()
     expect(admin?.password).toBe('Admin@123')
   })
+
+  it('strictly validates role permissions for admin portal access', async () => {
+    const studentRes = await authService.login({
+      email: 'student@skillpath.demo',
+      password: 'Student@123',
+    })
+    expect(studentRes.user.role).toBe('student')
+    expect(studentRes.user.role === 'admin').toBe(false)
+
+    const adminRes = await authService.login({
+      email: 'admin@skillpath.demo',
+      password: 'Admin@123',
+    })
+    expect(adminRes.user.role).toBe('admin')
+    expect(adminRes.user.role === 'admin').toBe(true)
+  })
 })
