@@ -3,13 +3,13 @@ import { Link, useLocation } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
 import { Button } from '@/components/ui/Button'
 import { SkillPathLogo } from '@/components/ui/SkillPathLogo'
-import { Menu, X, ArrowRight } from 'lucide-react'
+import { Menu, X, ArrowRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
 
   const navLinks = [
     { label: 'How It Works', href: ROUTES.HOW_IT_WORKS },
@@ -51,14 +51,25 @@ export const Navbar: React.FC = () => {
 
         {/* Desktop Action Buttons */}
         <div className="hidden md:flex items-center gap-3">
+          <Link to={ROUTES.ADMIN_DASHBOARD}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-[#1F6B4F]/30 text-[#1F6B4F] bg-[#D8E8DE]/20 hover:bg-[#D8E8DE]/60"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-[#1F6B4F]" />
+              Admin Portal
+            </Button>
+          </Link>
+
           {isAuthenticated ? (
-            <Link to={ROUTES.DASHBOARD}>
+            <Link to={user?.role === 'admin' ? ROUTES.ADMIN_DASHBOARD : ROUTES.DASHBOARD}>
               <Button
                 variant="primary"
                 size="sm"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                Go to Dashboard
+                {user?.role === 'admin' ? 'Admin Dashboard' : 'Go to Dashboard'}
               </Button>
             </Link>
           ) : (
@@ -107,10 +118,19 @@ export const Navbar: React.FC = () => {
             </Link>
           ))}
           <div className="pt-4 border-t border-[#E5E5DF] flex flex-col gap-2">
+            <Link
+              to={ROUTES.ADMIN_DASHBOARD}
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold text-[#1F6B4F] bg-[#D8E8DE]/40 rounded-lg border border-[#D8E8DE]"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Admin Portal</span>
+            </Link>
+
             {isAuthenticated ? (
-              <Link to={ROUTES.DASHBOARD} onClick={() => setMobileMenuOpen(false)}>
+              <Link to={user?.role === 'admin' ? ROUTES.ADMIN_DASHBOARD : ROUTES.DASHBOARD} onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="primary" className="w-full">
-                  Go to Dashboard
+                  {user?.role === 'admin' ? 'Admin Dashboard' : 'Go to Dashboard'}
                 </Button>
               </Link>
             ) : (
