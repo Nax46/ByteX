@@ -26,8 +26,6 @@ beforeEach(async () => {
   await SkillModel.deleteMany({});
   await CareerModel.deleteMany({});
   await CareerSkillModel.deleteMany({});
-  await SkillModel.syncIndexes();
-  await CareerModel.syncIndexes();
 });
 
 describe('Skill Domain Model & Validation', () => {

@@ -24,11 +24,10 @@ This document specifies the provider-agnostic **AI Service Abstraction Layer** a
 ### Abstraction Interface Definition (`IAIService`)
 ```typescript
 export interface IAIService {
-  generateSkillExplanation(context: AIPersonalizationContext, skillSlug: string): Promise<AISkillExplanationResponse>;
-  generatePersonalizedSummary(context: AIPersonalizationContext): Promise<AIPersonalizedSummaryResponse>;
-  askAIMentor(context: AIPersonalizationContext, userQuery: string): Promise<AIMentorResponse>;
-  explainResourceRecommendation(skillName: string, resourceTitle: string, userGap: number): Promise<string>;
-  explainProjectRecommendation(skillName: string, projectTitle: string, userGap: number): Promise<string>;
+  generateSkillExplanation(skillName: string, gapMagnitude: number): Promise<string>;
+  recommendResources(skillName: string, targetLevel: number): Promise<ResourceRecommendation[]>;
+  recommendProjects(skillName: string, careerTitle: string): Promise<ProjectRecommendation[]>;
+  generateRoadmapSummary(careerTitle: string, topGaps: string[]): Promise<string>;
 }
 ```
 
