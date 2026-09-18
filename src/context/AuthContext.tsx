@@ -11,7 +11,22 @@ import { MOCK_USER } from '@/mocks/user.mock'
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-const INITIAL_MOCK_MODE = import.meta.env.VITE_ENABLE_MOCK_FALLBACK !== 'false'
+const INITIAL_MOCK_MODE = import.meta.env.VITE_ENABLE_MOCK_FALLBACK === 'true'
+
+const normalizeUserProfile = (rawUser: any, fallbackName?: string): UserProfile => {
+  if (!rawUser) return rawUser
+  const derivedName =
+    rawUser.name ||
+    fallbackName ||
+    (rawUser.email
+      ? rawUser.email.split('@')[0].replace('.', ' ').replace(/^\w/, (c: string) => c.toUpperCase())
+      : 'Student')
+
+  return {
+    ...rawUser,
+    name: derivedName,
+  }
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(() => storageService.getUser())
@@ -57,8 +72,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         const liveUser = await authApi.getCurrentUser()
-        setUser(liveUser)
-        storageService.setUser(liveUser)
+        const normalized = normalizeUserProfile(liveUser, storedUser?.name)
+        setUser(normalized)
+        storageService.setUser(normalized)
       } catch (err: unknown) {
         console.warn('Backend session verification failed, resetting credentials:', err)
         storageService.clearSession()
@@ -96,10 +112,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const response = await authApi.login(credentials)
+      const normalized = normalizeUserProfile(response.user)
       storageService.setToken(response.token)
-      storageService.setUser(response.user)
+      storageService.setUser(normalized)
       setToken(response.token)
-      setUser(response.user)
+      setUser(normalized)
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'message' in err
         ? String((err as { message: string }).message)
@@ -134,11 +151,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const response = await authApi.register(credentials)
+      // Ensure confirmPassword is not passed to authApi
+      const { confirmPassword: _, ...payload } = credentials
+      const response = await authApi.register(payload)
+      const normalized = normalizeUserProfile(response.user, credentials.name)
       storageService.setToken(response.token)
-      storageService.setUser(response.user)
+      storageService.setUser(normalized)
       setToken(response.token)
-      setUser(response.user)
+      setUser(normalized)
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'message' in err
         ? String((err as { message: string }).message)
@@ -164,8 +184,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isMockMode) return
     try {
       const liveUser = await authApi.getCurrentUser()
-      setUser(liveUser)
-      storageService.setUser(liveUser)
+      const normalized = normalizeUserProfile(liveUser, user?.name)
+      setUser(normalized)
+      storageService.setUser(normalized)
     } catch {
       // Silent error on refresh
     }

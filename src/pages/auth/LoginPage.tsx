@@ -151,6 +151,7 @@ export const LoginPage: React.FC = () => {
               variant="primary"
               className="w-full mt-2"
               isLoading={isLoading}
+              disabled={isLoading}
             >
               Sign In
             </Button>

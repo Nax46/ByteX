@@ -46,7 +46,8 @@ export const RegisterPage: React.FC = () => {
     }
 
     try {
-      await register({ name, email, password, confirmPassword })
+      // confirmPassword is validated client-side only and never sent to backend
+      await register({ name, email, password })
       navigate(ROUTES.ONBOARDING)
     } catch {
       // Handled by AuthContext
@@ -152,6 +153,7 @@ export const RegisterPage: React.FC = () => {
               variant="primary"
               className="w-full mt-3"
               isLoading={isLoading}
+              disabled={isLoading}
             >
               Get Started
             </Button>

@@ -3,6 +3,8 @@ import { z, ZodSchema } from 'zod';
 import { sendError } from '../utils/api-response';
 
 export const registerSchema = z.object({
+  name: z.string().trim().optional(),
+  fullName: z.string().trim().optional(),
   email: z
     .string()
     .trim()

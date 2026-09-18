@@ -21,8 +21,21 @@ try {
   // logger module fallback
 }
 
+const sanitizeMongoUri = (rawUri: string): string => {
+  if (!rawUri || !rawUri.startsWith('mongodb')) return rawUri;
+  const match = rawUri.match(/^(mongodb(?:\+srv)?:\/\/)([^:]+):(.+)@([^@]+)$/);
+  if (match) {
+    const [, prefix, user, pass, hostAndRest] = match;
+    // Replace unencoded @ in password with percent-encoded %40
+    const encodedPass = pass.replace(/@/g, '%40');
+    return `${prefix}${user}:${encodedPass}@${hostAndRest}`;
+  }
+  return rawUri;
+};
+
 const getMongoUri = (customUri?: string): string => {
-  return customUri || process.env.MONGODB_URI || envMongoUri || 'mongodb://127.0.0.1:27017/ai-skillpath-dev';
+  const uri = customUri || process.env.MONGO_URI || process.env.MONGODB_URI || envMongoUri || 'mongodb://127.0.0.1:27017/ai-skillpath-dev';
+  return sanitizeMongoUri(uri);
 };
 
 const setupDns = (uri: string) => {

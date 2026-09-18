@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
 import { OnboardingPayload, OnboardingStep } from '@/types/onboarding.types'
-import { profileApi } from '@/api/endpoints/profile.api'
+import { profileApi, OnboardingBackendPayload } from '@/api/endpoints/profile.api'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { SkillPathLogo } from '@/components/ui/SkillPathLogo'
+import { LoadingState } from '@/components/common/LoadingState'
 import {
   User,
   GraduationCap,
@@ -20,19 +21,20 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 
 const INITIAL_ONBOARDING_STATE: OnboardingPayload = {
   personalInfo: {
-    fullName: 'Alex Patel',
-    headline: 'Student & Aspiring Frontend Developer',
-    location: 'Mumbai, India',
+    fullName: '',
+    headline: 'Student & Aspiring Developer',
+    location: '',
     preferredLanguage: 'English',
   },
   education: {
-    institution: 'College of Computer Applications',
-    degree: 'Bachelor of Computer Applications (BCA)',
-    fieldOfStudy: 'Computer Applications',
+    institution: '',
+    degree: '',
+    fieldOfStudy: '',
     graduationYear: 2026,
     currentStatus: 'student',
   },
@@ -55,22 +57,115 @@ const INITIAL_ONBOARDING_STATE: OnboardingPayload = {
 
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate()
-  const { isMockMode } = useAuth()
+  const { user, isMockMode, refreshUser } = useAuth()
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(1)
   const [formData, setFormData] = useState<OnboardingPayload>(INITIAL_ONBOARDING_STATE)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [semester, setSemester] = useState<number>(1)
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true)
+  const [hasExistingProfile, setHasExistingProfile] = useState<boolean>(false)
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const [skillInput, setSkillInput] = useState('')
 
   const totalSteps = 6
   const progressPercent = Math.round((currentStep / totalSteps) * 100)
 
+  // Fetch existing profile on initial load
+  useEffect(() => {
+    let isMounted = true
+
+    const loadInitialProfile = async () => {
+      if (isMockMode) {
+        if (isMounted) {
+          if (user?.name) {
+            setFormData((prev) => ({
+              ...prev,
+              personalInfo: { ...prev.personalInfo, fullName: user.name },
+            }))
+          }
+          setIsLoadingProfile(false)
+        }
+        return
+      }
+
+      try {
+        const existing = await profileApi.getProfile()
+        if (isMounted && existing) {
+          setHasExistingProfile(true)
+          if (existing.semester) setSemester(existing.semester)
+          setFormData((prev) => ({
+            ...prev,
+            personalInfo: {
+              ...prev.personalInfo,
+              fullName: existing.fullName || prev.personalInfo.fullName,
+            },
+            education: {
+              ...prev.education,
+              institution: existing.college || prev.education.institution,
+              degree: existing.education || prev.education.degree,
+            },
+            skills: {
+              ...prev.skills,
+              knownSkills:
+                existing.interests && existing.interests.length > 0
+                  ? existing.interests
+                  : prev.skills.knownSkills,
+            },
+            careerGoal: {
+              ...prev.careerGoal,
+              targetRole: existing.targetCareer || prev.careerGoal.targetRole,
+            },
+          }))
+        } else if (isMounted && user?.name) {
+          setFormData((prev) => ({
+            ...prev,
+            personalInfo: {
+              ...prev.personalInfo,
+              fullName: user.name,
+            },
+          }))
+        }
+      } catch (err: unknown) {
+        console.warn('Could not check existing profile:', err)
+      } finally {
+        if (isMounted) {
+          setIsLoadingProfile(false)
+        }
+      }
+    }
+
+    loadInitialProfile()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isMockMode, user?.name])
+
   const handleNext = () => {
+    setValidationError(null)
+    setApiError(null)
+
+    if (currentStep === 1) {
+      const name = formData.personalInfo.fullName.trim()
+      if (!name) {
+        setValidationError('Please enter your full name.')
+        return
+      }
+      if (name.length < 2) {
+        setValidationError('Full name must be at least 2 characters long.')
+        return
+      }
+    }
+
     if (currentStep < totalSteps) {
       setCurrentStep((prev) => (prev + 1) as OnboardingStep)
     }
   }
 
   const handleBack = () => {
+    setValidationError(null)
+    setApiError(null)
     if (currentStep > 1) {
       setCurrentStep((prev) => (prev - 1) as OnboardingStep)
     }
@@ -100,16 +195,63 @@ export const OnboardingPage: React.FC = () => {
   }
 
   const handleSubmit = async () => {
+    setValidationError(null)
+    setApiError(null)
+
+    const trimmedName = formData.personalInfo.fullName.trim()
+    if (!trimmedName || trimmedName.length < 2) {
+      setValidationError('Full name must be at least 2 characters long.')
+      setCurrentStep(1)
+      return
+    }
+
     setIsSubmitting(true)
+
+    // Build backend-compatible payload strictly matching backend onboardingSchema
+    const backendPayload: OnboardingBackendPayload = {
+      fullName: trimmedName,
+      college: formData.education.institution.trim() || undefined,
+      education: formData.education.degree.trim() || undefined,
+      semester: Number(semester) || 1,
+      interests:
+        formData.skills.knownSkills.length > 0
+          ? formData.skills.knownSkills
+          : [formData.skills.primaryFocus].filter(Boolean),
+      targetCareer: formData.careerGoal.targetRole.trim() || undefined,
+    }
+
     try {
       if (!isMockMode) {
-        await profileApi.submitOnboarding(formData)
+        if (hasExistingProfile) {
+          await profileApi.updateProfile(backendPayload)
+        } else {
+          try {
+            await profileApi.submitOnboarding(backendPayload)
+          } catch (postErr: any) {
+            // If profile already created (409), safely update
+            if (postErr?.status === 409) {
+              await profileApi.updateProfile(backendPayload)
+            } else {
+              throw postErr
+            }
+          }
+        }
+
+        if (refreshUser) {
+          await refreshUser().catch(() => {})
+        }
       } else {
         await new Promise((resolve) => setTimeout(resolve, 600))
       }
-      navigate(ROUTES.DASHBOARD)
-    } catch {
-      navigate(ROUTES.DASHBOARD)
+
+      navigate(ROUTES.DASHBOARD, { replace: true })
+    } catch (err: any) {
+      const msg =
+        err?.message ||
+        (err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
+          : 'Failed to complete onboarding. Please verify your information.')
+      setApiError(msg)
     } finally {
       setIsSubmitting(false)
     }
@@ -123,6 +265,14 @@ export const OnboardingPage: React.FC = () => {
     'Preferences',
     'Review',
   ]
+
+  if (isLoadingProfile) {
+    return (
+      <div className="min-h-screen py-10 px-4 sm:px-6 max-w-2xl mx-auto flex flex-col justify-center bg-[#F8F7F3]">
+        <LoadingState message="Checking existing student profile..." />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto flex flex-col justify-center bg-[#F8F7F3] animate-fadeIn">
@@ -141,6 +291,13 @@ export const OnboardingPage: React.FC = () => {
       </div>
 
       <Card className="p-6 sm:p-8 bg-white border-[#E5E5DF] shadow-sm">
+        {/* Error Notification Banner */}
+        {(apiError || validationError) && (
+          <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-700">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+            <span>{validationError || apiError}</span>
+          </div>
+        )}
         {/* STEP 1: PERSONAL INFO */}
         {currentStep === 1 && (
           <div className="space-y-4 animate-fadeIn">
@@ -244,25 +401,43 @@ export const OnboardingPage: React.FC = () => {
               />
             </div>
 
-            <Select
-              label="Current Status"
-              value={formData.education.currentStatus}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  education: {
-                    ...formData.education,
-                    currentStatus: e.target.value as OnboardingPayload['education']['currentStatus'],
-                  },
-                })
-              }
-              options={[
-                { value: 'student', label: 'College / University Student' },
-                { value: 'bootcamp', label: 'Bootcamp / Intensive Course' },
-                { value: 'self-taught', label: 'Self-Taught Student' },
-                { value: 'professional', label: 'Early Career Professional' },
-              ]}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Select
+                label="Current Status"
+                value={formData.education.currentStatus}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    education: {
+                      ...formData.education,
+                      currentStatus: e.target.value as OnboardingPayload['education']['currentStatus'],
+                    },
+                  })
+                }
+                options={[
+                  { value: 'student', label: 'College / University Student' },
+                  { value: 'bootcamp', label: 'Bootcamp / Intensive Course' },
+                  { value: 'self-taught', label: 'Self-Taught Student' },
+                  { value: 'professional', label: 'Early Career Professional' },
+                ]}
+              />
+
+              <Select
+                label="Current Semester"
+                value={semester}
+                onChange={(e) => setSemester(Number(e.target.value))}
+                options={[
+                  { value: 1, label: 'Semester 1' },
+                  { value: 2, label: 'Semester 2' },
+                  { value: 3, label: 'Semester 3' },
+                  { value: 4, label: 'Semester 4' },
+                  { value: 5, label: 'Semester 5' },
+                  { value: 6, label: 'Semester 6' },
+                  { value: 7, label: 'Semester 7' },
+                  { value: 8, label: 'Semester 8' },
+                ]}
+              />
+            </div>
           </div>
         )}
 
@@ -459,6 +634,12 @@ export const OnboardingPage: React.FC = () => {
                 <span className="text-[#626763]">Initial Skills</span>
                 <span className="font-medium text-[#171918]">{formData.skills.knownSkills.join(', ')}</span>
               </div>
+              <div className="p-3 rounded-lg bg-[#F8F7F3] border border-[#E5E5DF] flex justify-between items-center">
+                <span className="text-[#626763]">Education</span>
+                <span className="font-semibold text-[#171918]">
+                  {formData.education.institution || 'College'} • Semester {semester}
+                </span>
+              </div>
             </div>
 
             <div className="p-3.5 rounded-lg bg-[#D8E8DE]/50 border border-[#1F6B4F]/20 flex items-start gap-2.5">
@@ -500,9 +681,10 @@ export const OnboardingPage: React.FC = () => {
               size="md"
               onClick={handleSubmit}
               isLoading={isSubmitting}
+              disabled={isSubmitting}
               rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
             >
-              Complete Onboarding
+              {hasExistingProfile ? 'Save & Go to Dashboard' : 'Complete Onboarding'}
             </Button>
           )}
         </div>

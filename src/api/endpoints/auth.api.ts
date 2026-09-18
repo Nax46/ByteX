@@ -15,19 +15,24 @@ export const authApi = {
   },
 
   register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-    // Endpoint contract placeholder: POST /auth/register
-    const res = await apiClient.post<AuthResponse, RegisterCredentials>('/auth/register', credentials)
+    // Confirm-password is frontend-only and MUST NOT be sent to the backend
+    const { confirmPassword: _, ...payload } = credentials
+    const res = await apiClient.post<AuthResponse, typeof payload>('/auth/register', payload)
     return res.data
   },
 
   logout: async (): Promise<void> => {
-    // Endpoint contract placeholder: POST /auth/logout
-    await apiClient.post<void>('/auth/logout')
+    try {
+      await apiClient.post<void>('/auth/logout')
+    } catch {
+      // Local session cleanup is handled by storage service
+    }
   },
 
   getCurrentUser: async (): Promise<UserProfile> => {
-    // Endpoint contract placeholder: GET /auth/me
-    const res = await apiClient.get<UserProfile>('/auth/me')
-    return res.data
+    // Contract: GET /auth/me returns { user: SafeUser } inside response.data
+    const res = await apiClient.get<{ user?: UserProfile } | UserProfile>('/auth/me')
+    const userData = (res.data as { user?: UserProfile })?.user || (res.data as UserProfile)
+    return userData
   },
 }
