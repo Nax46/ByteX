@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/utils/cn'
 import { X } from 'lucide-react'
 
@@ -28,16 +29,17 @@ export const Modal: React.FC<ModalProps> = ({
       }
     }
     if (isOpen) {
+      const originalBodyOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
       window.addEventListener('keydown', handleKeyDown)
-    }
-    return () => {
-      document.body.style.overflow = 'unset'
-      window.removeEventListener('keydown', handleKeyDown)
+      return () => {
+        document.body.style.overflow = originalBodyOverflow
+        window.removeEventListener('keydown', handleKeyDown)
+      }
     }
   }, [isOpen, onClose])
 
-  if (!isOpen) return null
+  if (!isOpen || typeof document === 'undefined') return null
 
   const sizeStyles = {
     sm: 'max-w-sm',
@@ -46,11 +48,11 @@ export const Modal: React.FC<ModalProps> = ({
     xl: 'max-w-3xl',
   }
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/60 backdrop-blur-sm flex min-h-screen items-center justify-center p-3 sm:p-6 animate-fadeIn">
       {/* Background click backdrop */}
       <div
-        className="fixed inset-0 -z-10"
+        className="fixed inset-0"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -58,7 +60,7 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Modal Dialog Card */}
       <div
         className={cn(
-          'relative w-full rounded-2xl bg-white border border-[#E5E5DF] shadow-2xl text-[#171918] z-10 animate-scaleUp flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)] overflow-hidden my-auto',
+          'relative w-full rounded-2xl bg-white border border-[#E5E5DF] shadow-2xl text-[#171918] text-left z-10 flex flex-col max-h-[calc(100vh-2.5rem)] sm:max-h-[calc(100vh-3.5rem)] my-auto overflow-hidden',
           sizeStyles[size],
           className
         )}
@@ -98,4 +100,6 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
