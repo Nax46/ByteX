@@ -14,7 +14,7 @@ import {
   GOAL_LABELS,
   SKILL_AREAS,
 } from '@/types/mentor.types'
-import { Sparkles, ChevronRight, Users, Target, BarChart3 } from 'lucide-react'
+import { Sparkles, ChevronRight, Users, Target, BarChart3, CheckCircle2 } from 'lucide-react'
 
 const GOALS: { value: LearningGoal; label: string }[] = Object.entries(GOAL_LABELS).map(
   ([value, label]) => ({ value: value as LearningGoal, label })
@@ -34,6 +34,9 @@ export const MentorPage: React.FC = () => {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [isMatching, setIsMatching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isMentorshipActive = mentorService.isJourneyActive()
+  const paymentRecord = mentorService.getPaymentRecord()
 
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) =>
@@ -84,6 +87,34 @@ export const MentorPage: React.FC = () => {
           { label: 'Mentor Support' },
         ]}
       />
+
+      {/* Active Mentorship Banner if already enrolled */}
+      {isMentorshipActive && paymentRecord && (
+        <Card className="p-4 bg-green-50/80 border-green-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-green-800">Active Mentorship</span>
+                <span className="px-2 py-0.5 rounded-full bg-green-200 text-green-800 text-[10px] font-semibold">Active</span>
+              </div>
+              <p className="text-sm font-semibold text-[#171918]">
+                {paymentRecord.mentorName} • {paymentRecord.planName}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate(ROUTES.MENTOR_JOURNEY)}
+            rightIcon={<ChevronRight className="w-4 h-4" />}
+          >
+            Go to My Journey
+          </Button>
+        </Card>
+      )}
 
       {/* Hero value strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

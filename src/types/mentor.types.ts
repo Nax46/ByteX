@@ -159,3 +159,33 @@ export interface MentorJourney {
   nextTask: string
   planWeeks: { week: number; focus: string; completed: boolean }[]
 }
+
+// ─── Payment & Checkout Types ──────────────────────────────────────────────
+
+export type PaymentStatus = 'pending' | 'processing' | 'demo_success' | 'failed' | 'cancelled'
+
+export type MentorshipStatus = 'not_selected' | 'selected' | 'payment_pending' | 'active'
+
+export type PaymentMethod = 'upi' | 'card' | 'netbanking'
+
+export type UPIApp = 'google_pay' | 'phonepe' | 'paytm' | 'other'
+
+export interface MentorPaymentRecord {
+  paymentId: string
+  studentId: string
+  studentName: string
+  studentEmail: string
+  mentorId: string
+  mentorName: string
+  planName: string
+  duration: string
+  amount: number
+  paymentMethod: PaymentMethod
+  upiApp?: string
+  upiId?: string
+  paymentStatus: PaymentStatus
+  mentorshipStatus: MentorshipStatus
+  createdAt: string
+  isDemo: true
+}
+

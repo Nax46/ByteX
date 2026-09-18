@@ -200,12 +200,15 @@ export const MentorProfilePage: React.FC = () => {
 
             <div className="space-y-2">
               <Link to={demoPath}>
-                <Button variant="primary" className="w-full" rightIcon={<Zap className="w-4 h-4" />}>
+                <Button variant="outline" className="w-full" rightIcon={<Zap className="w-4 h-4" />}>
                   Try Mentor Demo
                 </Button>
               </Link>
-              <Link to={demoPath}>
-                <Button variant="outline" className="w-full" rightIcon={<ChevronRight className="w-4 h-4" />}>
+              <Link
+                to={`${ROUTES.MENTOR_CHECKOUT}?mentorId=${mentor.id}`}
+                onClick={() => mentorService.storeSelectedMentorId(mentor.id)}
+              >
+                <Button variant="primary" className="w-full" rightIcon={<ChevronRight className="w-4 h-4" />}>
                   Choose This Mentor
                 </Button>
               </Link>

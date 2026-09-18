@@ -199,15 +199,24 @@ export const MentorRecommendationsPage: React.FC = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2 pt-1 mt-auto">
+                <div className="flex flex-col sm:flex-row gap-1.5 pt-1 mt-auto">
                   <Link to={profilePath} className="flex-1">
                     <Button variant="outline" size="sm" className="w-full text-xs">
                       View Profile
                     </Button>
                   </Link>
                   <Link to={demoPath} className="flex-1">
-                    <Button variant="primary" size="sm" className="w-full text-xs" rightIcon={<ChevronRight className="w-3 h-3" />}>
+                    <Button variant="outline" size="sm" className="w-full text-xs">
                       Try Demo
+                    </Button>
+                  </Link>
+                  <Link
+                    to={`${ROUTES.MENTOR_CHECKOUT}?mentorId=${mentor.id}`}
+                    onClick={() => mentorService.storeSelectedMentorId(mentor.id)}
+                    className="flex-1"
+                  >
+                    <Button variant="primary" size="sm" className="w-full text-xs" rightIcon={<ChevronRight className="w-3 h-3" />}>
+                      Select
                     </Button>
                   </Link>
                 </div>
