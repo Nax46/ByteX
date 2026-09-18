@@ -10,18 +10,44 @@ import { mentorApi, MentorMessage } from '@/api/endpoints/mentor.api'
 import { Compass, Send, Sparkles } from 'lucide-react'
 
 export const MentorPage: React.FC = () => {
-  const { user, isMockMode } = useAuth()
-  const [messages, setMessages] = useState<MentorMessage[]>([
-    {
-      id: 'm1',
-      role: 'assistant',
-      content:
-        'Hello Alex! Based on your current progress in JavaScript Fundamentals and your goal of becoming a Frontend Developer, strengthening Git workflows and diving into React will give you the highest momentum right now. What would you like to explore today?',
-      timestamp: 'Just now',
-    },
-  ])
+  const { user } = useAuth()
+  const [messages, setMessages] = useState<MentorMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+
+  React.useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const history = await mentorApi.getChatHistory()
+        if (history && history.length > 0) {
+          setMessages(history)
+        } else {
+          setMessages([
+            {
+              id: 'm_init',
+              role: 'assistant',
+              content: `Hello ${user?.name || 'there'}! I'm your AI learning mentor. Ask me any questions about your personalized roadmap, technical concepts, project architecture, or career preparation. What would you like to explore today?`,
+              timestamp: 'Just now',
+            },
+          ])
+        }
+      } catch {
+        setMessages([
+          {
+            id: 'm_init',
+            role: 'assistant',
+            content: `Hello ${user?.name || 'there'}! I'm your AI learning mentor. Ask me any questions about your personalized roadmap, technical concepts, project architecture, or career preparation. What would you like to explore today?`,
+            timestamp: 'Just now',
+          },
+        ])
+      } finally {
+        setIsLoadingHistory(false)
+      }
+    }
+
+    fetchHistory()
+  }, [user?.name])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,26 +66,21 @@ export const MentorPage: React.FC = () => {
     setIsSending(true)
 
     try {
-      if (isMockMode) {
-        await new Promise((resolve) => setTimeout(resolve, 700))
-        const aiMsg: MentorMessage = {
-          id: 'ai_' + Date.now(),
-          role: 'assistant',
-          content: `Regarding "${promptText}": In modern Frontend development, focus on understanding component state flow, immutable data updates, and how clean functions prevent unexpected side-effects. Take a look at Stage 04 in your Learning Path for targeted exercises.`,
-          timestamp: 'Just now',
-        }
-        setMessages((prev) => [...prev, aiMsg])
-      } else {
-        const response = await mentorApi.sendMessage({ message: promptText })
+      const response = await mentorApi.sendMessage({ message: promptText })
+      if (response?.message) {
         setMessages((prev) => [...prev, response.message])
       }
-    } catch {
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Unable to communicate with the mentor service. Please ensure the backend API server is online.'
       setMessages((prev) => [
         ...prev,
         {
           id: 'err_' + Date.now(),
           role: 'assistant',
-          content: 'The mentor assistant is running in offline demo mode. Feel free to ask questions about your roadmap and skills.',
+          content: msg,
           timestamp: 'Just now',
         },
       ])
@@ -83,32 +104,39 @@ export const MentorPage: React.FC = () => {
       <Card className="flex-1 flex flex-col justify-between p-4 sm:p-6 overflow-hidden bg-white border-[#E5E5DF] shadow-sm">
         {/* Messages List */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex items-start gap-3 ${
-                msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-              }`}
-            >
-              {msg.role === 'assistant' ? (
-                <div className="w-8 h-8 rounded-lg bg-[#D8E8DE] text-[#1F6B4F] flex items-center justify-center shrink-0">
-                  <Compass className="w-4 h-4" />
-                </div>
-              ) : (
-                <Avatar name={user?.name || 'Alex Patel'} size="sm" />
-              )}
-
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-12 text-[#626763] text-sm gap-2">
+              <Sparkles className="w-4 h-4 animate-spin text-[#1F6B4F]" />
+              <span>Connecting with mentor...</span>
+            </div>
+          ) : (
+            messages.map((msg) => (
               <div
-                className={`max-w-xl p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'bg-[#1F6B4F] text-white rounded-br-none'
-                    : 'bg-[#F8F7F3] text-[#171918] border border-[#E5E5DF] rounded-bl-none'
+                key={msg.id}
+                className={`flex items-start gap-3 ${
+                  msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                 }`}
               >
-                {msg.content}
+                {msg.role === 'assistant' ? (
+                  <div className="w-8 h-8 rounded-lg bg-[#D8E8DE] text-[#1F6B4F] flex items-center justify-center shrink-0">
+                    <Compass className="w-4 h-4" />
+                  </div>
+                ) : (
+                  <Avatar name={user?.name || 'Student'} size="sm" />
+                )}
+
+                <div
+                  className={`max-w-xl p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                    msg.role === 'user'
+                      ? 'bg-[#1F6B4F] text-white rounded-br-none'
+                      : 'bg-[#F8F7F3] text-[#171918] border border-[#E5E5DF] rounded-bl-none'
+                  }`}
+                >
+                  {msg.content}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
 
           {isSending && (
             <div className="flex items-center gap-3">
