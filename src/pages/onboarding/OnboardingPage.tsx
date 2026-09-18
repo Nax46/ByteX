@@ -55,7 +55,7 @@ const INITIAL_ONBOARDING_STATE: OnboardingPayload = {
 
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate()
-  const { isMockMode } = useAuth()
+  const { isMockMode, user } = useAuth()
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(1)
   const [formData, setFormData] = useState<OnboardingPayload>(INITIAL_ONBOARDING_STATE)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -102,13 +102,18 @@ export const OnboardingPage: React.FC = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
-      if (!isMockMode) {
-        await profileApi.submitOnboarding(formData)
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 600))
+      const backendPayload = {
+        fullName: formData.personalInfo.fullName || user?.name || 'Student',
+        education: formData.education.degree || 'Computer Science',
+        college: formData.education.institution || 'University',
+        semester: 3,
+        interests: formData.skills.knownSkills,
+        targetCareer: formData.careerGoal.targetRole || 'Full Stack Web Developer',
       }
+      await profileApi.submitOnboarding(backendPayload as any)
       navigate(ROUTES.DASHBOARD)
-    } catch {
+    } catch (err: unknown) {
+      console.error('Onboarding submission error:', err)
       navigate(ROUTES.DASHBOARD)
     } finally {
       setIsSubmitting(false)

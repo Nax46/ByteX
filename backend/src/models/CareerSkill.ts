@@ -48,11 +48,10 @@ const CareerSkillSchema = new Schema<ICareerSkillDocument>(
   }
 );
 
-// Compound Unique Index to prevent duplicate career+skill mappings
+// Compound Unique Index to prevent duplicate career+skill mappings ({ careerId: 1 } covered as left prefix)
 CareerSkillSchema.index({ careerId: 1, skillId: 1 }, { unique: true });
 
-// Individual Indexes for fast lookups by career or skill
-CareerSkillSchema.index({ careerId: 1 });
+// Individual Index for fast reverse lookups by skillId
 CareerSkillSchema.index({ skillId: 1 });
 
 export const CareerSkillModel: Model<ICareerSkillDocument> = model<ICareerSkillDocument>('CareerSkill', CareerSkillSchema);

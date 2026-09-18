@@ -12,7 +12,10 @@ const getBaseUrl = (): string => {
   if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0) {
     return envUrl.trim()
   }
-  // Default relative API path when proxying or backend is configured on same origin
+  // In development, target port 5000 directly when running on Vite dev server (5173)
+  if (typeof window !== 'undefined' && window.location.port === '5173') {
+    return 'http://localhost:5000/api'
+  }
   return '/api'
 }
 
@@ -81,6 +84,11 @@ export const apiClient = {
 
   put: async <T, B = unknown>(url: string, data?: B, config?: InternalAxiosRequestConfig): Promise<ApiResponse<T>> => {
     const response = await axiosInstance.put<ApiResponse<T>>(url, data, config)
+    return response.data
+  },
+
+  patch: async <T, B = unknown>(url: string, data?: B, config?: InternalAxiosRequestConfig): Promise<ApiResponse<T>> => {
+    const response = await axiosInstance.patch<ApiResponse<T>>(url, data, config)
     return response.data
   },
 

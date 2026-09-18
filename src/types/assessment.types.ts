@@ -1,22 +1,29 @@
 export type QuestionType = 'MULTIPLE_CHOICE' | 'CODE_SNIPPET' | 'SCENARIO'
 
-export interface AssessmentQuestion {
-  id: string
+export interface QuestionOptionType {
+  optionId?: string
+  id?: string
   text: string
-  type: QuestionType
-  options: {
-    id: string
-    text: string
-  }[]
+}
+
+export interface AssessmentQuestion {
+  _id?: string
+  id?: string
+  text?: string
+  question?: string
+  type?: QuestionType
+  options: QuestionOptionType[]
   codeSnippet?: string
-  category: string
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD'
+  category?: string
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD'
+  points?: number
+  skillId?: string
 }
 
 export interface AssessmentSubmission {
-  assessmentId: string
-  answers: Record<string, string> // questionId -> optionId
-  timeSpentSeconds: number
+  assessmentId?: string
+  answers?: Record<string, string> | Array<{ questionId: string; selectedOptionId: string; timeTakenSeconds?: number }>
+  timeSpentSeconds?: number
 }
 
 export interface AssessmentResult {

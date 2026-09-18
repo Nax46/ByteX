@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "seed": "tsx backend/src/seed/seedMaster.ts",
+    "seed:all": "tsx backend/src/seed/seedMaster.ts",
     "seed:foundation": "tsx backend/src/seed/foundationSeed.ts"
   },
   "dependencies": {

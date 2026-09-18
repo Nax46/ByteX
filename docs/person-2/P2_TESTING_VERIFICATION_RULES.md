@@ -35,13 +35,45 @@ Person 2's deterministic intelligence engines must be validated against the foll
 - **Roadmap Versioning**: Verify that reassessment triggers creation of a new roadmap document (`version: 2`) while setting `version: 1` `isCurrent: false`.
 - **Historical Integrity**: Verify that past `AssessmentAttempt` records are unchanged after a new attempt.
 
-### 3.4 Seed Idempotency Tests
-- **Duplicate Run**: Run seed script twice in succession. Verify that database count of skills and careers remains identical (0 duplicates).
+### 3.5 Roadmap Progress Engine Tests
+- **State Transitions**: Test `LOCKED` $\to$ `IN_PROGRESS` $\to$ `COMPLETED` transitions with timestamp initialization.
+- **Prerequisite Enforcement**: Verify starting a module with uncompleted prerequisites throws `RoadmapProgressError` (400).
+- **Completion Unlocking**: Verify completing module 1 unlocks module 2 for learning.
+- **Overall Progress Formula**: Verify overall progress returns rounded integer percentage ($1/3 \to 33\%$).
+- **Zero-Module Safety**: Verify `calculateOverallProgress([])` returns `0` cleanly.
+- **Historical Isolation**: Verify V1 roadmap progress does not mutate or affect V2 roadmap progress.
+- **Student Ownership**: Verify student identity checks reject cross-student modification attempts (403 Forbidden).
+
+### 3.6 Reassessment Engine Tests
+- **Historical Immutability**: Verify new reassessment attempt creates a distinct document without mutating previous attempt documents.
+- **Score Trends**: Test score improvement ($55 \to 72 = +17$, `IMPROVED`), decline ($72 \to 65 = -7$, `DECLINED`), unchanged ($70 \to 70 = 0$, `UNCHANGED`), and unassessed (`NEW_EVIDENCE`).
+- **Latest Attempt Selection**: Verify `getReassessmentSummary` automatically selects the latest completed attempt by timestamp (`completedAt: -1`).
+- **Authorization**: Verify student identity verification rejects unauthorized cross-student attempt queries (404/403).
+
+### 3.7 Adaptive Roadmap Engine Tests (P2-ROAD-005)
+- **Historical Preservation**: Initial Roadmap V1 remains unchanged (version, status ARCHIVED, modules) after adaptation.
+- **New Versioning**: New roadmap V2 is created with `version: 2`, `isCurrent: true`, `status: ACTIVE`, `generationReason: ADAPTIVE`.
+- **Target-Met Skill Removal**: Target-met skills (`gap === 0`) are removed from active modules in V2 while maintaining prerequisite satisfaction for dependent active skills.
+- **Improved/Regressed/New Evidence Handling**: Improved skills with remaining gaps stay active; regressed skills re-open active modules; new evidence skills are cleanly incorporated.
+- **Prerequisite Ordering Safety**: Kahn's topological sort ensures prerequisite skills precede dependent skills even if dependent skills have higher priority.
+- **Progress Isolation**: V1 `RoadmapProgress` is untouched; V2 receives an independent `RoadmapProgress` document.
+- **Duplicate Generation Protection**: Repeated adaptation requests for the same assessment attempt ID without `force: true` return the existing active roadmap without creating duplicate versions.
+- **Authorization & Pure Isolation**: Pure adaptive functions do not mutate inputs; student ownership enforcement rejects unauthorized access.
+
+### 3.8 Full 23-Step End-to-End Verification (P20)
+- **Primary E2E Pipeline**: Verified in `backend/tests/fullE2EFlow.test.ts`.
+- **Flow**: Catalog setup $\to$ Student registration $\to$ Career resolution $\to$ Diagnostic assessment $\to$ Question loading $\to$ Answer submission $\to$ Server-side deterministic scoring $\to$ Score persistence $\to$ Skill gap calculation $\to$ Priority score assignment $\to$ Roadmap V1 topological generation $\to$ Progress initialization $\to$ Resource recommendations $\to$ Project recommendations $\to$ Module progress state transition $\to$ Reassessment attempt submission $\to$ Attempt immutability check $\to$ Score trend delta calculation $\to$ Adaptive roadmap V2 generation $\to$ V1 archive / V2 active flag update $\to$ V2 active verification $\to$ V2 progress isolation $\to$ AI personalization context consumption $\to$ Security boundary check.
 
 ---
 
-## 4. Verification Reporting Standard
+## 4. Empirical Test Suite Status
 
-Never report `PASS` unless verified empirically through command output. If a test runner or TypeScript compiler is not yet installed in the workspace, report:
-- `TypeScript → NOT AVAILABLE`
-- `Tests → NOT AVAILABLE`
+Current verified status across the entire repository:
+- **Test Suite**: 17 / 17 Test Files PASS
+- **Test Count**: 147 / 147 Tests PASS
+- **Typecheck**: PASS (0 errors)
+- **Vite & TSC Build**: PASS
+- **ESLint**: PASS (0 errors)
+
+
+

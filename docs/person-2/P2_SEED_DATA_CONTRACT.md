@@ -45,3 +45,18 @@ To demonstrate Person 2's intelligence engine during hackathon judging, the seed
 5. **Roadmap Generation**: Output sequential roadmap targeting REST API → Node.js → MongoDB.
 6. **Progress & Reassessment Trigger**: Simulating completion of REST API module and taking a reassessment test.
 7. **Adaptive Roadmap Execution**: Updated score `REST API: 85 / 100` → Gap drops to 0 → Roadmap dynamically recalculates to highlight Node.js & MongoDB!
+
+---
+
+## 5. Master Seed Runner Contract
+
+- **Entry Point**: `backend/src/seed/seedMaster.ts`
+- **CLI Commands**: `npm run seed` or `npm run seed:all`
+- **Execution Order**:
+  1. `seedFoundationData()`: Skills, Careers, CareerSkills
+  2. `seedAssessmentData()`: Assessments, Question Banks
+  3. `seedResourceData()`: Curated Resources (20+ items)
+  4. `seedProjectData()`: Practical Portfolio Projects (15+ items)
+  5. `seedDemoStudentData()`: Demo Student User, StudentProfile, Diagnostic AssessmentAttempt, Baseline Roadmap V1, and Progress document.
+- **Idempotency Guarantee**: Idempotent across multiple runs with zero duplicate document creation.
+

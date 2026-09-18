@@ -11,7 +11,7 @@ import { MOCK_USER } from '@/mocks/user.mock'
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-const INITIAL_MOCK_MODE = import.meta.env.VITE_ENABLE_MOCK_FALLBACK !== 'false'
+const INITIAL_MOCK_MODE = import.meta.env.VITE_ENABLE_MOCK_FALLBACK === 'true'
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(() => storageService.getUser())

@@ -1,4 +1,4 @@
-import { apiClient } from '../client'
+import { apiClient } from '@/api/client'
 import { UserProfile, UserStats } from '@/types/user.types'
 import { OnboardingPayload } from '@/types/onboarding.types'
 
