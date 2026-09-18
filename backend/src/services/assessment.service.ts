@@ -5,6 +5,8 @@ import {
   AssessmentStatus,
   IAssessmentAttempt,
 } from '../models/AssessmentAttempt';
+import { QuestionModel } from '../models/Question';
+import { StudentFacingQuestionDTO } from '../types/assessment';
 
 export class AssessmentError extends Error {
   statusCode: number;
@@ -15,6 +17,22 @@ export class AssessmentError extends Error {
     this.statusCode = statusCode;
   }
 }
+
+/**
+ * Retrieves active diagnostic questions, stripping answer keys and explanations.
+ */
+export const getStudentFacingQuestions = async (): Promise<StudentFacingQuestionDTO[]> => {
+  const questionDocs = await QuestionModel.find({ isActive: true }).lean();
+  return questionDocs.map((q) => ({
+    _id: q._id.toString(),
+    skillId: q.skillId.toString(),
+    assessmentId: q.assessmentId ? q.assessmentId.toString() : undefined,
+    text: q.text,
+    options: q.options.map((o) => ({ optionId: o.optionId, text: o.text })),
+    difficulty: q.difficulty,
+    points: q.points,
+  }));
+};
 
 export interface SafeAssessmentAttempt {
   id: string;

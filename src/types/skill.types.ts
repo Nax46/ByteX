@@ -31,3 +31,32 @@ export interface CareerGoal {
   }[]
   matchPercentage?: number
 }
+
+export interface ISkillGapPrioritySnapshot {
+  skillId: string
+  skillName?: string
+  skillSlug?: string
+  currentLevel: number | null
+  targetLevel: number
+  gap: number
+  hasEvidence: boolean
+  importance: string
+  weight: number
+  prerequisites: string[]
+  isPrerequisiteForOthers: boolean
+  priority: {
+    priorityScore: number
+    strategyName: string
+    isProvisional: boolean
+    priorityStatus: string
+    explanation: string
+  }
+}
+
+export interface ISkillGapPriorityReadout {
+  snapshots: ISkillGapPrioritySnapshot[]
+  targetCareerTitle?: string
+  overallReadinessScore?: number
+  metSkillsCount?: number
+  totalRequiredSkills?: number
+}

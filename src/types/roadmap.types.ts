@@ -21,3 +21,29 @@ export interface Roadmap {
   milestones: RoadmapMilestone[]
   updatedAt: string
 }
+
+export interface IRoadmapProgressSummary {
+  roadmapId?: string
+  overallProgress: number
+  totalModules: number
+  completedModules: number
+  inProgressModules: number
+  lockedModules: number
+  modules: Array<{
+    moduleId: string
+    status: string
+    progressPercent: number
+    startedAt?: string | null
+    completedAt?: string | null
+  }>
+  roadmapDetails?: {
+    careerGoal?: string
+    title?: string
+    modules: Array<{
+      moduleId: string
+      order: number
+      title: string
+      description?: string
+    }>
+  }
+}

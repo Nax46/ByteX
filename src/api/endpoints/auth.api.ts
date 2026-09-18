@@ -1,4 +1,4 @@
-import { apiClient } from '../client'
+import { apiClient } from '@/api/client'
 import { AuthResponse, LoginCredentials, RegisterCredentials } from '@/types/auth.types'
 import { UserProfile } from '@/types/user.types'
 

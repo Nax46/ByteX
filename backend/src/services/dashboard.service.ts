@@ -60,7 +60,7 @@ export const getDashboardSummary = async (userId: string): Promise<DashboardSumm
       .lean(),
   ]);
 
-  const profileCompleted = !!profileDoc;
+  const profileCompleted = !!(profileDoc && profileDoc.targetCareer);
   const profile: DashboardProfileData = profileCompleted
     ? {
         completed: true,

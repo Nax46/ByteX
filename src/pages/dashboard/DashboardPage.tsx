@@ -5,11 +5,18 @@ import { Card } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { ProgressBar } from '@/components/ui/ProgressBar'
 import { LoadingState } from '@/components/common/LoadingState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { EmptyState } from '@/components/common/EmptyState'
 import { dashboardApi } from '@/api/endpoints/dashboard.api'
+import { profileApi } from '@/api/endpoints/profile.api'
+import { skillsApi } from '@/api/endpoints/skills.api'
+import { roadmapApi } from '@/api/endpoints/roadmap.api'
 import { DashboardSummary } from '@/types/dashboard.types'
+import { UserStats } from '@/types/user.types'
+import { Skill, SkillGap } from '@/types/skill.types'
+import { Roadmap } from '@/types/roadmap.types'
 import { useAuth } from '@/hooks/useAuth'
 import { ArrowRight, Clock, Sparkles } from 'lucide-react'
 
@@ -17,6 +24,10 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [data, setData] = useState<DashboardSummary | null>(null)
+  const [stats, setStats] = useState<UserStats | null>(null)
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [roadmap, setRoadmap] = useState<Roadmap | null>(null)
+  const [gaps, setGaps] = useState<SkillGap[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,9 +35,39 @@ export const DashboardPage: React.FC = () => {
     setIsLoading(true)
     setError(null)
     try {
-      const summary = await dashboardApi.getDashboardSummary()
+      const [summaryRes, statsRes, skillsRes, roadmapRes, gapsRes] = await Promise.allSettled([
+        dashboardApi.getDashboardSummary(),
+        profileApi.getUserStats(),
+        skillsApi.getSkills(),
+        roadmapApi.getCurrentRoadmap(),
+        skillsApi.getSkillGaps(),
+      ])
+
       if (isMounted()) {
-        setData(summary)
+        if (summaryRes.status === 'fulfilled') {
+          setData(summaryRes.value)
+        }
+        if (statsRes.status === 'fulfilled') {
+          setStats(statsRes.value)
+        }
+        if (skillsRes.status === 'fulfilled') {
+          setSkills(skillsRes.value || [])
+        }
+        if (roadmapRes.status === 'fulfilled') {
+          setRoadmap(roadmapRes.value)
+        }
+        if (gapsRes.status === 'fulfilled') {
+          setGaps(gapsRes.value || [])
+        }
+
+        if (summaryRes.status === 'rejected' && !data) {
+          const reason = summaryRes.reason
+          const message =
+            reason && typeof reason === 'object' && 'message' in reason
+              ? String((reason as { message: string }).message)
+              : 'Unable to load dashboard data. Please try again.'
+          setError(message)
+        }
       }
     } catch (err: unknown) {
       if (isMounted()) {
@@ -42,7 +83,7 @@ export const DashboardPage: React.FC = () => {
         setIsLoading(false)
       }
     }
-  }, [])
+  }, [data])
 
   useEffect(() => {
     let mounted = true
@@ -76,6 +117,7 @@ export const DashboardPage: React.FC = () => {
   const assessment = data.assessment || { hasActiveAttempt: false, latestAttempt: null }
 
   const displayName = profile.fullName || user?.name || 'Student'
+  const targetRole = profile.targetCareer || user?.careerGoal || 'Full Stack Developer'
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -93,8 +135,9 @@ export const DashboardPage: React.FC = () => {
             {getGreeting()}, {displayName} 👋
           </h1>
           <p className="text-xs sm:text-sm text-[#626763] mt-1">
+            Targeting: <strong className="text-[#171918]">{targetRole}</strong> •{' '}
             {profile.targetCareer
-              ? `Targeting: ${profile.targetCareer} • Here's where you are in your learning journey.`
+              ? "Here's where you are in your learning journey."
               : onboarding.completed
               ? "Here's where you are in your learning journey."
               : 'Complete your onboarding profile to unlock your personalized skill path.'}
@@ -154,7 +197,7 @@ export const DashboardPage: React.FC = () => {
         </Card>
       )}
 
-      {/* 2. TOP METRICS (4 compact, elegant cards) */}
+      {/* 2. TOP METRICS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Target Career"
@@ -329,60 +372,102 @@ export const DashboardPage: React.FC = () => {
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5DF]/70">
                 <div>
                   <h3 className="font-heading text-base font-bold text-[#171918]">Your Skill Snapshot</h3>
-                  <p className="text-xs text-[#626763] mt-0.5">Evaluated proficiency across core competencies</p>
+                  <p className="text-xs text-[#626763] mt-0.5">Live proficiency evaluation from MongoDB</p>
                 </div>
                 <Link to={ROUTES.SKILLS} className="text-xs font-semibold text-[#1F6B4F] hover:underline">
-                  View skills catalog →
+                  View all skills →
                 </Link>
               </div>
 
-              <div className="py-6">
-                <EmptyState
-                  title={assessment.latestAttempt ? 'Skill Data Recorded' : 'No Assessment Taken'}
-                  description={
-                    assessment.latestAttempt
-                      ? 'Your skills have been evaluated. Open the Skill Gap Matrix to review detailed proficiency breakdowns.'
-                      : 'Take your diagnostic skill assessment to evaluate your proficiency across core competencies.'
-                  }
-                  actionLabel={assessment.latestAttempt ? 'View Skill Gap Matrix' : 'Take Skill Assessment'}
-                  onAction={() => navigate(assessment.latestAttempt ? ROUTES.SKILL_GAP : ROUTES.ASSESSMENT)}
-                />
-              </div>
+              {skills.length > 0 ? (
+                <div className="space-y-4">
+                  {skills.slice(0, 5).map((skill) => (
+                    <div key={skill.id || skill.name} className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-medium text-[#171918]">{skill.name}</span>
+                        <span className="font-bold text-[#1F6B4F]">{skill.progress}%</span>
+                      </div>
+                      <ProgressBar
+                        value={skill.progress}
+                        variant={skill.progress >= 70 ? 'forest' : skill.progress >= 50 ? 'primary' : 'warning'}
+                        size="sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-6">
+                  <EmptyState
+                    title={assessment.latestAttempt ? 'Skill Data Recorded' : 'No Assessment Taken'}
+                    description={
+                      assessment.latestAttempt
+                        ? 'Your skills have been evaluated. Open the Skill Gap Matrix to review detailed proficiency breakdowns.'
+                        : 'Take your diagnostic skill assessment to evaluate your proficiency across core competencies.'
+                    }
+                    actionLabel={assessment.latestAttempt ? 'View Skill Gap Matrix' : 'Take Skill Assessment'}
+                    onAction={() => navigate(assessment.latestAttempt ? ROUTES.SKILL_GAP : ROUTES.ASSESSMENT)}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="pt-5 mt-4 border-t border-[#E5E5DF]/70 flex items-center justify-between text-xs">
               <span className="text-[#626763]">Target Career Focus:</span>
               <span className="font-semibold text-[#1F6B4F] bg-[#D8E8DE]/80 px-2.5 py-0.5 rounded-full border border-[#C2D8C9]">
-                {profile.targetCareer || 'General Track'}
+                {profile.targetCareer || user?.careerGoal || 'General Track'}
               </span>
             </div>
           </Card>
         </div>
 
-        {/* Right: Personalized Recommendations */}
+        {/* Right: Recommendations based on gaps */}
         <div className="lg:col-span-6 space-y-4">
           <Card glass="interactive" className="p-6 border-white/80 h-full flex flex-col justify-between animate-slideUp stagger-2">
             <div>
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5DF]/70">
                 <div>
-                  <h3 className="font-heading text-base font-bold text-[#171918]">Recommended for you</h3>
+                  <h3 className="font-heading text-base font-bold text-[#171918]">Recommended Next Steps</h3>
                   <p className="text-xs text-[#626763] mt-0.5">Tailored to your current skills and target role</p>
                 </div>
-                <Badge variant="forest" size="sm">Smart Track</Badge>
+                <Badge variant="forest" size="sm">{gaps.length > 0 ? 'Dynamic' : 'Smart Track'}</Badge>
               </div>
 
-              <div className="py-6">
-                <EmptyState
-                  title={onboarding.completed ? 'Recommendations In Preparation' : 'Profile Incomplete'}
-                  description={
-                    onboarding.completed
-                      ? 'Personalized learning recommendations will populate as you progress through your roadmap milestones.'
-                      : 'Complete your onboarding profile to allow the AI engine to curate personalized learning recommendations.'
-                  }
-                  actionLabel={onboarding.completed ? 'Explore Roadmap' : 'Complete Onboarding'}
-                  onAction={() => navigate(onboarding.completed ? ROUTES.ROADMAP : ROUTES.ONBOARDING)}
-                />
-              </div>
+              {gaps.length > 0 ? (
+                <div className="space-y-3.5">
+                  {gaps.slice(0, 3).map((gap) => (
+                    <div key={gap.skillId || gap.skillName} className="p-3.5 rounded-xl glass-panel border-white/70 hover-lift transition-all">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-heading text-sm font-bold text-[#171918]">{gap.skillName}</h4>
+                        <span
+                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                            gap.priority === 'HIGH'
+                              ? 'bg-red-50 text-red-700 border border-red-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}
+                        >
+                          {gap.priority} Gap ({gap.gap} pts)
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#626763] leading-relaxed">
+                        {gap.recommendedAction || `Focus on closing the ${gap.skillName} gap to meet standard benchmarks.`}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-6">
+                  <EmptyState
+                    title={onboarding.completed ? 'Recommendations In Preparation' : 'Profile Incomplete'}
+                    description={
+                      onboarding.completed
+                        ? 'Personalized learning recommendations will populate as you progress through your roadmap milestones.'
+                        : 'Complete your onboarding profile to allow the AI engine to curate personalized learning recommendations.'
+                    }
+                    actionLabel={onboarding.completed ? 'Explore Roadmap' : 'Complete Onboarding'}
+                    onAction={() => navigate(onboarding.completed ? ROUTES.ROADMAP : ROUTES.ONBOARDING)}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="pt-4 mt-4 border-t border-[#E5E5DF]/70">
@@ -402,7 +487,9 @@ export const DashboardPage: React.FC = () => {
           <div>
             <h3 className="font-heading text-base font-bold text-[#171918]">Your Learning Roadmap Stages</h3>
             <p className="text-xs text-[#626763] mt-0.5">
-              {profile.targetCareer
+              {roadmap?.careerGoal
+                ? `${roadmap.careerGoal} track`
+                : profile.targetCareer
                 ? `${profile.targetCareer} preparation track`
                 : 'Personalized preparation track'}
             </p>
@@ -414,20 +501,64 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="py-8">
-          <EmptyState
-            title={profile.completed ? 'Roadmap Ready to Explore' : 'Set Your Target Career'}
-            description={
-              profile.completed
-                ? `Explore the interactive roadmap milestones curated for ${
-                    profile.targetCareer || 'your career path'
-                  }.`
-                : 'Complete onboarding to initialize your custom learning stages and skill modules.'
-            }
-            actionLabel={profile.completed ? 'Open Interactive Roadmap' : 'Go to Onboarding'}
-            onAction={() => navigate(profile.completed ? ROUTES.ROADMAP : ROUTES.ONBOARDING)}
-          />
-        </div>
+        {roadmap && roadmap.milestones && roadmap.milestones.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {roadmap.milestones.map((m) => (
+              <div
+                key={m.id}
+                className={`p-4 rounded-xl flex flex-col justify-between hover-lift transition-all ${
+                  m.status === 'COMPLETED'
+                    ? 'glass-panel border-[#C2D8C9] bg-[#D8E8DE]/35'
+                    : m.status === 'IN_PROGRESS'
+                    ? 'glass-panel-elevated border-[#1F6B4F]/40 ring-1 ring-[#1F6B4F]/25'
+                    : 'glass-panel border-white/60'
+                }`}
+              >
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[11px] font-bold text-[#626763]">Stage {m.order}</span>
+                    <Badge
+                      variant={
+                        m.status === 'COMPLETED'
+                          ? 'forest'
+                          : m.status === 'IN_PROGRESS'
+                          ? 'warning'
+                          : 'outline'
+                      }
+                      size="sm"
+                    >
+                      {m.status === 'IN_PROGRESS' ? 'Current' : m.status}
+                    </Badge>
+                  </div>
+                  <h4 className="font-heading text-sm font-bold text-[#171918] mb-1">{m.title}</h4>
+                  <p className="text-xs text-[#626763] line-clamp-2">{m.description}</p>
+                </div>
+
+                <div className="pt-3 mt-3 border-t border-[#E5E5DF]/60 flex items-center justify-between text-[11px] text-[#626763]">
+                  <span>{m.estimatedHours} hrs</span>
+                  <span className="font-medium text-[#1F6B4F] truncate max-w-[120px]">
+                    {m.skillsCovered?.join(', ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-8">
+            <EmptyState
+              title={profile.completed ? 'Roadmap Ready to Explore' : 'Set Your Target Career'}
+              description={
+                profile.completed
+                  ? `Explore the interactive roadmap milestones curated for ${
+                      profile.targetCareer || 'your career path'
+                    }.`
+                  : 'Complete onboarding to initialize your custom learning stages and skill modules.'
+              }
+              actionLabel={profile.completed ? 'Open Interactive Roadmap' : 'Go to Onboarding'}
+              onAction={() => navigate(profile.completed ? ROUTES.ROADMAP : ROUTES.ONBOARDING)}
+            />
+          </div>
+        )}
       </Card>
     </div>
   )

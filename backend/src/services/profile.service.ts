@@ -74,7 +74,20 @@ export const createOnboardingProfile = async (
   // Enforce 1:1 relationship
   const existingProfile = await StudentProfile.findOne({ userId });
   if (existingProfile) {
-    throw new ProfileError('Profile already exists for this user', 409);
+    if (existingProfile.targetCareer || (existingProfile.education && existingProfile.college)) {
+      throw new ProfileError('Profile already exists for this user', 409);
+    }
+
+    // Existing profile was an initial registration stub; update it with onboarding data
+    existingProfile.fullName = data.fullName;
+    existingProfile.education = data.education;
+    existingProfile.college = data.college;
+    existingProfile.semester = data.semester;
+    existingProfile.interests = data.interests;
+    existingProfile.targetCareer = data.targetCareer;
+    await existingProfile.save();
+
+    return formatSafeProfile(existingProfile);
   }
 
   // Create student profile

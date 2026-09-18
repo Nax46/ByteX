@@ -6,23 +6,49 @@ import { LoadingState } from '@/components/common/LoadingState'
 
 interface ProtectedRouteProps {
   children?: React.ReactNode
+  allowedRoles?: ('student' | 'admin' | 'mentor')[]
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth()
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+  const { user, isAuthenticated, isLoading } = useAuth()
   const location = useLocation()
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F7F3]">
         <LoadingState message="Verifying session..." minHeight="min-h-[300px]" />
       </div>
     )
   }
 
+  // If unauthenticated:
   if (!isAuthenticated) {
+    // If attempting to access an admin-only path, redirect directly to /admin login flow
+    if (location.pathname.startsWith('/admin')) {
+      return <Navigate to={ROUTES.ADMIN} state={{ from: location }} replace />
+    }
     return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />
+  }
+
+  // Role validation
+  if (allowedRoles && allowedRoles.length > 0) {
+    const userRole = user?.role || 'student'
+    if (!allowedRoles.includes(userRole)) {
+      // If a student tries to access the admin portal, deny access and send to student dashboard
+      if (location.pathname.startsWith('/admin')) {
+        return <Navigate to={ROUTES.DASHBOARD} replace />
+      }
+
+      // If an admin accesses a student-only route, route to admin dashboard
+      if (userRole === 'admin') {
+        return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
+      }
+
+      return <Navigate to={ROUTES.DASHBOARD} replace />
+    }
   }
 
   return children ? <>{children}</> : <Outlet />
 }
+
+export default ProtectedRoute

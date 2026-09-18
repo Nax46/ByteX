@@ -23,6 +23,7 @@ export interface AuthResponse {
 export interface AuthState {
   user: UserProfile | null
   token: string | null
+  role?: 'student' | 'mentor' | 'admin'
   isAuthenticated: boolean
   isLoading: boolean
   isMockMode: boolean

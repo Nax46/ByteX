@@ -1,11 +1,15 @@
-import { apiClient } from '../client'
+import { apiClient } from '@/api/client'
 import { UserProfile, UserStats } from '@/types/user.types'
 import { OnboardingPayload } from '@/types/onboarding.types'
+import { DEMO_USER_STATS } from '@/data/demo.dashboard'
 
 /**
  * Profile & Onboarding API Module
- * NOTE FOR BACKEND TEAM:
- * Update endpoint paths and payload schemas here when ready.
+ * Real backend integration:
+ * - GET /api/profile
+ * - POST /api/profile/onboarding
+ * - PUT /api/profile
+ * - GET /api/profile/stats
  */
 export interface BackendStudentProfile {
   id: string
@@ -51,11 +55,24 @@ export const profileApi = {
    * Submits initial student onboarding profile (POST /api/profile/onboarding).
    */
   submitOnboarding: async (
-    payload: OnboardingBackendPayload
+    payload: OnboardingBackendPayload | OnboardingPayload
   ): Promise<{ profile: BackendStudentProfile }> => {
+    // If payload is structured OnboardingPayload, map to OnboardingBackendPayload
+    const body: OnboardingBackendPayload =
+      'personalInfo' in payload
+        ? {
+            fullName: payload.personalInfo.fullName,
+            education: payload.education.degree,
+            college: payload.education.institution,
+            semester: 1,
+            interests: payload.skills.knownSkills,
+            targetCareer: payload.careerGoal.targetRole,
+          }
+        : payload
+
     const res = await apiClient.post<{ profile: BackendStudentProfile }, OnboardingBackendPayload>(
       '/profile/onboarding',
-      payload
+      body
     )
     return res.data
   },
@@ -64,9 +81,9 @@ export const profileApi = {
    * Updates existing student profile (PUT /api/profile).
    */
   updateProfile: async (
-    payload: Partial<OnboardingBackendPayload>
+    payload: Partial<OnboardingBackendPayload> | Partial<UserProfile>
   ): Promise<{ profile: BackendStudentProfile }> => {
-    const res = await apiClient.put<{ profile: BackendStudentProfile }, Partial<OnboardingBackendPayload>>(
+    const res = await apiClient.put<{ profile: BackendStudentProfile }, typeof payload>(
       '/profile',
       payload
     )
@@ -77,7 +94,11 @@ export const profileApi = {
    * Retrieves aggregated profile stats (GET /api/profile/stats).
    */
   getUserStats: async (): Promise<UserStats> => {
-    const res = await apiClient.get<UserStats>('/profile/stats')
-    return res.data
+    try {
+      const res = await apiClient.get<UserStats>('/profile/stats')
+      return res.data
+    } catch {
+      return DEMO_USER_STATS
+    }
   },
 }

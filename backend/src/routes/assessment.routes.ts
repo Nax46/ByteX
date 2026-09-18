@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  getQuestionsHandler,
   startAssessmentHandler,
   submitAssessmentHandler,
   getAttemptHandler,
@@ -15,6 +16,9 @@ const router = Router();
 
 // All assessment endpoints require authentication
 router.use(requireAuth);
+
+// GET /api/assessment/questions
+router.get('/questions', getQuestionsHandler);
 
 // POST /api/assessment/start
 router.post('/start', startAssessmentHandler);

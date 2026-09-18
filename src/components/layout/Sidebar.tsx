@@ -46,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed })
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col border-r border-[#E5E5DF] bg-white transition-all duration-200 z-30 select-none h-screen sticky top-0',
+        'hidden md:flex flex-col border-r border-[#E5E5DF] bg-white transition-all duration-200 z-30 select-none fixed inset-y-0 left-0',
         isCollapsed ? 'w-20' : 'w-64'
       )}
     >
@@ -119,6 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed })
 
       {/* Bottom Navigation */}
       <div className="border-t border-[#E5E5DF] p-3 space-y-1">
+
         <NavLink
           to={ROUTES.SETTINGS}
           title={isCollapsed ? 'Settings' : undefined}

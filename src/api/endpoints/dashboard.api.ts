@@ -1,5 +1,7 @@
-import { apiClient } from '../client'
+import { apiClient } from '@/api/client'
 import { DashboardSummary } from '@/types/dashboard.types'
+
+export type DashboardSummaryResponse = DashboardSummary
 
 /**
  * Dashboard Aggregation API Module
@@ -14,5 +16,12 @@ export const dashboardApi = {
     const summary =
       (raw as { dashboard?: DashboardSummary })?.dashboard || (raw as DashboardSummary)
     return summary
+  },
+
+  /**
+   * Alias for getDashboardSummary for backwards compatibility
+   */
+  getSummary: async (): Promise<DashboardSummary> => {
+    return dashboardApi.getDashboardSummary()
   },
 }
