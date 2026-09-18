@@ -81,7 +81,7 @@ export const RegisterPage: React.FC = () => {
               id="register-name"
               label="Full Name"
               type="text"
-              placeholder="Alex Patel"
+              placeholder="Your Name"
               value={name}
               onChange={(e) => {
                 setName(e.target.value)
@@ -96,7 +96,7 @@ export const RegisterPage: React.FC = () => {
               id="register-email"
               label="Email Address"
               type="email"
-              placeholder="alex.patel@student.edu"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value)

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
 import { PublicLayout } from '@/layouts/PublicLayout'
 import { StudentLayout } from '@/layouts/StudentLayout'
+import { AdminLayout } from '@/layouts/AdminLayout'
 import { ProtectedRoute } from './ProtectedRoute'
 
 // Public Pages
@@ -30,6 +31,18 @@ import { CareersPage } from '@/pages/career/CareersPage'
 import { MentorPage } from '@/pages/mentor/MentorPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 
+// Authenticated Admin Pages
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
+import { StudentsPage } from '@/pages/admin/students/StudentsPage'
+import { StudentDetailPage } from '@/pages/admin/students/StudentDetailPage'
+import { AssessmentsPage as AdminAssessmentsPage } from '@/pages/admin/assessments/AssessmentsPage'
+import { SkillsPage as AdminSkillsPage } from '@/pages/admin/skills/SkillsPage'
+import { ResourcesPage as AdminResourcesPage } from '@/pages/admin/resources/ResourcesPage'
+import { LearningPathsPage } from '@/pages/admin/learning-paths/LearningPathsPage'
+import { CareersPage as AdminCareersPage } from '@/pages/admin/careers/CareersPage'
+import { AnalyticsPage } from '@/pages/admin/analytics/AnalyticsPage'
+import { AdminSettingsPage } from '@/pages/admin/settings/AdminSettingsPage'
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -46,7 +59,7 @@ export const AppRoutes: React.FC = () => {
       <Route
         path={ROUTES.ONBOARDING}
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['student', 'admin']}>
             <OnboardingPage />
           </ProtectedRoute>
         }
@@ -55,7 +68,7 @@ export const AppRoutes: React.FC = () => {
       {/* Authenticated Student Portal with StudentLayout (Sidebar & Header) */}
       <Route
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['student', 'admin']}>
             <StudentLayout />
           </ProtectedRoute>
         }
@@ -74,6 +87,27 @@ export const AppRoutes: React.FC = () => {
         <Route path={ROUTES.CAREER_READINESS} element={<CareersPage />} />
         <Route path={ROUTES.MENTOR} element={<MentorPage />} />
         <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
+      </Route>
+
+      {/* Authenticated Admin Portal with AdminLayout (Sidebar & Header) */}
+      <Route
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path={ROUTES.ADMIN} element={<Navigate to={ROUTES.ADMIN_DASHBOARD} replace />} />
+        <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
+        <Route path={ROUTES.ADMIN_STUDENTS} element={<StudentsPage />} />
+        <Route path={ROUTES.ADMIN_STUDENT_DETAIL} element={<StudentDetailPage />} />
+        <Route path={ROUTES.ADMIN_ASSESSMENTS} element={<AdminAssessmentsPage />} />
+        <Route path={ROUTES.ADMIN_SKILLS} element={<AdminSkillsPage />} />
+        <Route path={ROUTES.ADMIN_RESOURCES} element={<AdminResourcesPage />} />
+        <Route path={ROUTES.ADMIN_LEARNING_PATHS} element={<LearningPathsPage />} />
+        <Route path={ROUTES.ADMIN_CAREERS} element={<AdminCareersPage />} />
+        <Route path={ROUTES.ADMIN_ANALYTICS} element={<AnalyticsPage />} />
+        <Route path={ROUTES.ADMIN_SETTINGS} element={<AdminSettingsPage />} />
       </Route>
 
       {/* Catch-all fallback */}

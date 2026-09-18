@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
         </div>
       </div>
 
-      {/* Right: Notifications & Alex Patel profile */}
+      {/* Right: Notifications & User profile */}
       <div className="flex items-center gap-3 sm:gap-4">
         {/* Notification Bell */}
         <button
@@ -70,16 +70,16 @@ export const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-[#F8F7F3] transition-colors focus:outline-none cursor-pointer"
           >
             <Avatar
-              name={user?.name || 'Alex Patel'}
+              name={user?.name || 'Student'}
               size="sm"
               status="online"
             />
             <div className="hidden lg:flex flex-col text-left">
               <span className="text-xs font-semibold text-[#171918] truncate max-w-[130px]">
-                {user?.name || 'Alex Patel'}
+                {user?.name || 'Student'}
               </span>
               <span className="text-[11px] text-[#626763] truncate max-w-[130px]">
-                {user?.education?.degree || 'BCA — Sem 3'}
+                {user?.education?.degree || user?.careerGoal || 'Learner'}
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-[#8E948F] hidden sm:block" />
@@ -94,11 +94,15 @@ export const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
               />
               <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white border border-[#E5E5DF] shadow-md py-2 z-40 animate-fadeIn">
                 <div className="px-4 py-2 border-b border-[#E5E5DF]">
-                  <p className="text-xs font-semibold text-[#171918] truncate">{user?.name || 'Alex Patel'}</p>
-                  <p className="text-[11px] text-[#626763] truncate">{user?.email || 'alex.patel@student.edu'}</p>
-                  <Badge variant="forest" size="sm" className="mt-1.5">
-                    Goal: {user?.careerGoal || 'Frontend Developer'}
-                  </Badge>
+                  <p className="text-xs font-semibold text-[#171918] truncate">{user?.name || 'Student'}</p>
+                  {user?.email && (
+                    <p className="text-[11px] text-[#626763] truncate">{user.email}</p>
+                  )}
+                  {user?.careerGoal && (
+                    <Badge variant="forest" size="sm" className="mt-1.5">
+                      Goal: {user.careerGoal}
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="py-1">

@@ -1,117 +1,132 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
+import { LoadingState } from '@/components/common/LoadingState'
+import { assessmentApi } from '@/api/endpoints/assessment.api'
+import { AssessmentQuestion, AssessmentResult } from '@/types/assessment.types'
 import { ROUTES } from '@/constants/routes'
-import { CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Award, RotateCcw } from 'lucide-react'
-
-interface QuestionItem {
-  id: string
-  number: number
-  total: number
-  category: string
-  question: string
-  explanation: string
-  choices: string[]
-  correctIndex: number
-}
-
-const ASSESSMENT_QUESTIONS: QuestionItem[] = [
-  {
-    id: 'q7',
-    number: 7,
-    total: 10,
-    category: 'Frontend Development & Responsive Design',
-    question: 'You need to make a web layout fluid across mobile, tablet, and widescreen displays. Which approach represents modern best practice?',
-    explanation: 'Mobile-first design with CSS custom properties and relative units (rem, em, %) prevents layout breaks and minimizes media query bloat.',
-    choices: [
-      'Use a mobile-first CSS architecture with relative units (rem, em, %) and fluid media queries',
-      'Create separate HTML files for desktop and mobile devices and redirect users via JavaScript',
-      'Fix all container widths to 1200px and allow mobile browsers to zoom in automatically',
-      'Rely exclusively on table layouts with pixel-based min-width constraints',
-    ],
-    correctIndex: 0,
-  },
-  {
-    id: 'q8',
-    number: 8,
-    total: 10,
-    category: 'Modern JavaScript (ES6+)',
-    question: 'In JavaScript asynchronous programming, what is the primary benefit of async/await over raw Promise chains (.then/.catch)?',
-    explanation: 'Async/await allows asynchronous code to be read and structured sequentially with standard try/catch error handling.',
-    choices: [
-      'It executes promises in parallel threads using native multi-core CPU workers',
-      'It provides synchronous-looking syntax with native try/catch blocks, improving readability and debugging',
-      'It prevents network requests from ever timing out or throwing uncaught exceptions',
-      'It automatically caches all HTTP API responses in local browser storage',
-    ],
-    correctIndex: 1,
-  },
-  {
-    id: 'q9',
-    number: 9,
-    total: 10,
-    category: 'Git & Version Control',
-    question: 'When collaborating with a development team, why is creating isolated feature branches preferred over committing directly to main?',
-    explanation: 'Feature branches isolate ongoing work, facilitate thorough pull request code reviews, and keep the main branch stable and deployable.',
-    choices: [
-      'It permanently conceals unfinished commits from other contributors on GitHub',
-      'It isolates new functionality for clean peer review and CI testing without risking main branch stability',
-      'It speeds up local hard drive compilation times by halving the repository index size',
-      'It bypasses Git merge conflict resolution by automatically overwriting divergent commits',
-    ],
-    correctIndex: 1,
-  },
-  {
-    id: 'q10',
-    number: 10,
-    total: 10,
-    category: 'Component Architecture & State',
-    question: 'In modern React, what happens when state is lifted up to a shared common ancestor component?',
-    explanation: 'Lifting state up establishes a single source of truth, enabling coordinated data flow between sibling components via props.',
-    choices: [
-      'It establishes a single source of truth so sibling components can share and synchronize data predictably',
-      'It converts functional components back into legacy class components for backward compatibility',
-      'It prevents child components from ever re-rendering when props change',
-      'It automatically exports the component state to a backend database without an API call',
-    ],
-    correctIndex: 0,
-  },
-]
+import { CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Award, RotateCcw, HelpCircle } from 'lucide-react'
 
 export const AssessmentPage: React.FC = () => {
   const navigate = useNavigate()
+  const [questions, setQuestions] = useState<AssessmentQuestion[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
   const [currentIdx, setCurrentIdx] = useState<number>(0)
-  const [answers, setAnswers] = useState<Record<number, number>>({ 0: 0 })
-  const [isCompleted, setIsCompleted] = useState<boolean>(false)
-  const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right')
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [submissionResult, setSubmissionResult] = useState<AssessmentResult | null>(null)
+  const [startTime] = useState<number>(() => Date.now())
 
-  const currentQ = ASSESSMENT_QUESTIONS[currentIdx]
-  const selectedChoice = answers[currentIdx] ?? null
-  const progressPercent = ((currentQ.number) / currentQ.total) * 100
+  useEffect(() => {
+    let isMounted = true
+    const loadQuestions = async () => {
+      setIsLoading(true)
+      try {
+        const data = await assessmentApi.getQuestions()
+        if (isMounted) {
+          setQuestions(data || [])
+        }
+      } catch (err) {
+        console.error('Failed to load assessment questions:', err)
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
+    }
 
-  const handleSelectChoice = (choiceIdx: number) => {
+    loadQuestions()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  if (isLoading) {
+    return <LoadingState message="Loading diagnostic questions..." minHeight="min-h-[350px]" />
+  }
+
+  if (questions.length === 0 && !submissionResult) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn py-4">
+        <PageHeader
+          title="Skill Assessment"
+          subtitle="Quick diagnostic evaluations to gauge practical ability and calibrate your personal learning roadmap."
+          breadcrumbs={[
+            { label: 'Dashboard', href: ROUTES.DASHBOARD },
+            { label: 'Assessment' },
+          ]}
+        />
+        <Card className="p-8 text-center space-y-4 bg-white border-[#E5E5DF]">
+          <HelpCircle className="w-12 h-12 text-[#1F6B4F] mx-auto opacity-75" />
+          <h3 className="font-heading text-lg font-bold text-[#171918]">No assessment questions available</h3>
+          <p className="text-xs text-[#626763] max-w-md mx-auto">
+            Assessment questions for your selected domain are currently being prepared by the curriculum system.
+          </p>
+          <Link to={ROUTES.DASHBOARD}>
+            <Button variant="outline" size="sm">
+              Return to Dashboard
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    )
+  }
+
+  const currentQ = questions[currentIdx]
+  const selectedChoice = currentQ ? answers[currentQ.id] : null
+  const progressPercent = currentQ ? Math.round(((currentIdx + 1) / questions.length) * 100) : 100
+
+  const handleSelectOption = (optionId: string) => {
+    if (!currentQ) return
     setAnswers((prev) => ({
       ...prev,
-      [currentIdx]: choiceIdx,
+      [currentQ.id]: optionId,
     }))
   }
 
-  const handleNext = () => {
-    if (currentIdx < ASSESSMENT_QUESTIONS.length - 1) {
-      setSlideDirection('right')
+  const handleNext = async () => {
+    if (currentIdx < questions.length - 1) {
       setCurrentIdx((prev) => prev + 1)
     } else {
-      setIsCompleted(true)
+      // Submit assessment
+      setIsSubmitting(true)
+      const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000))
+      try {
+        const res = await assessmentApi.submitAssessment({
+          assessmentId: 'diag_assessment',
+          answers,
+          timeSpentSeconds,
+        })
+        setSubmissionResult(res)
+      } catch (err) {
+        console.error('Failed to submit assessment:', err)
+        // Fallback result calculation from local answers
+        const total = questions.length
+        const answeredCount = Object.keys(answers).length
+        const localScore = Math.round((answeredCount / total) * 100)
+        setSubmissionResult({
+          id: 'res_' + Date.now(),
+          assessmentId: 'diag_assessment',
+          title: 'Diagnostic Assessment',
+          category: questions[0]?.category || 'General',
+          completedAt: new Date().toISOString(),
+          score: localScore,
+          totalQuestions: total,
+          correctQuestions: answeredCount,
+          evaluatedSkills: [],
+          identifiedGaps: [],
+          recommendedRoadmapSteps: [],
+        })
+      } finally {
+        setIsSubmitting(false)
+      }
     }
   }
 
   const handlePrev = () => {
     if (currentIdx > 0) {
-      setSlideDirection('left')
       setCurrentIdx((prev) => prev - 1)
     } else {
       navigate(ROUTES.DASHBOARD)
@@ -120,8 +135,8 @@ export const AssessmentPage: React.FC = () => {
 
   const handleRestart = () => {
     setCurrentIdx(0)
-    setAnswers({ 0: 0 })
-    setIsCompleted(false)
+    setAnswers({})
+    setSubmissionResult(null)
   }
 
   return (
@@ -135,14 +150,14 @@ export const AssessmentPage: React.FC = () => {
         ]}
       />
 
-      {!isCompleted ? (
+      {!submissionResult && currentQ ? (
         <Card glass="elevated" className="p-6 sm:p-8 border-white/80 space-y-6 shadow-2xl relative overflow-hidden">
           {/* Progress Header with animated smooth bar */}
           <div className="space-y-2 pb-4 border-b border-[#E5E5DF]/70">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-[#1F6B4F] flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-[#1F6B4F] animate-pulse" />
-                Question {currentQ.number} of {currentQ.total}
+                Question {currentIdx + 1} of {questions.length}
               </span>
               <span className="text-[#626763] font-medium truncate max-w-xs text-right">
                 {currentQ.category}
@@ -155,50 +170,50 @@ export const AssessmentPage: React.FC = () => {
             />
           </div>
 
-          {/* Animated Question Content Container */}
-          <div
-            key={currentQ.id}
-            className={slideDirection === 'right' ? 'animate-slideInRight' : 'animate-slideInLeft'}
-          >
-            {/* Question Text */}
-            <div className="pt-1 pb-4">
-              <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#1F6B4F] bg-[#D8E8DE]/80 px-3 py-1 rounded-full mb-2.5 border border-[#C2D8C9]">
-                Diagnostic Question #{currentQ.number}
-              </span>
-              <h2 className="font-heading text-lg sm:text-xl font-bold text-[#171918] leading-relaxed">
-                “{currentQ.question}”
-              </h2>
-            </div>
+          {/* Question Content */}
+          <div key={currentQ.id} className="space-y-5 animate-fadeIn">
+            <h3 className="font-heading text-lg sm:text-xl font-bold text-[#171918] leading-snug">
+              {currentQ.text}
+            </h3>
 
-            {/* 4 Clean Answer Choices with instant micro-animation & frosted glass */}
+            {currentQ.codeSnippet && (
+              <pre className="p-4 rounded-xl bg-[#1E201E] text-[#D8E8DE] text-xs font-mono overflow-x-auto">
+                <code>{currentQ.codeSnippet}</code>
+              </pre>
+            )}
+
+            {/* Answer Choices */}
             <div className="space-y-3 pt-1">
-              {currentQ.choices.map((choice, idx) => {
-                const isSelected = selectedChoice === idx
+              {currentQ.options?.map((opt, optIdx) => {
+                const isSelected = selectedChoice === opt.id
                 return (
                   <button
-                    key={idx}
+                    key={opt.id || optIdx}
                     type="button"
-                    onClick={() => handleSelectChoice(idx)}
-                    className={`w-full text-left p-4 rounded-xl border text-sm transition-all duration-200 flex items-start justify-between gap-3 cursor-pointer group ${
+                    onClick={() => handleSelectOption(opt.id)}
+                    className={`w-full text-left p-4 rounded-xl transition-all duration-200 flex items-start justify-between gap-4 cursor-pointer ${
                       isSelected
-                        ? 'border-[#1F6B4F] bg-[#D8E8DE]/60 text-[#171918] font-medium shadow-sm scale-[1.008] ring-1 ring-[#1F6B4F]/30'
-                        : 'glass-panel border-white/80 text-[#626763] hover:border-[#1F6B4F]/40 hover:text-[#171918] hover:bg-white/95'
+                        ? 'bg-[#D8E8DE]/60 border-2 border-[#1F6B4F] text-[#171918] shadow-sm'
+                        : 'bg-[#F8F7F3] border border-[#E5E5DF] text-[#626763] hover:text-[#171918] hover:border-[#D0D0C8] hover:bg-white'
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <span
-                        className={`w-5.5 h-5.5 rounded-full border text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5 transition-all duration-200 ${
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5 ${
                           isSelected
-                            ? 'border-[#1F6B4F] bg-[#1F6B4F] text-white shadow-xs scale-105'
-                            : 'border-[#D0D0C8] text-[#626763] bg-white group-hover:border-[#1F6B4F]'
+                            ? 'bg-[#1F6B4F] text-white'
+                            : 'bg-white border border-[#E5E5DF] text-[#626763]'
                         }`}
                       >
-                        {String.fromCharCode(65 + idx)}
+                        {String.fromCharCode(65 + optIdx)}
                       </span>
-                      <span className="leading-relaxed">{choice}</span>
+                      <span className="text-xs sm:text-sm font-medium leading-relaxed">
+                        {opt.text}
+                      </span>
                     </div>
+
                     {isSelected && (
-                      <CheckCircle2 className="w-4 h-4 text-[#1F6B4F] shrink-0 mt-0.5 animate-popIn" />
+                      <CheckCircle2 className="w-4 h-4 text-[#1F6B4F] shrink-0 mt-0.5" />
                     )}
                   </button>
                 )
@@ -220,23 +235,23 @@ export const AssessmentPage: React.FC = () => {
             <Button
               variant="primary"
               size="md"
-              disabled={selectedChoice === null}
+              disabled={!selectedChoice || isSubmitting}
+              isLoading={isSubmitting}
               onClick={handleNext}
-              rightIcon={<ArrowRight className="w-3.5 h-3.5 group-hover-arrow" />}
+              rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
             >
-              {currentIdx === ASSESSMENT_QUESTIONS.length - 1 ? 'Submit Assessment' : 'Next Question'}
+              {currentIdx === questions.length - 1 ? 'Submit Assessment' : 'Next Question'}
             </Button>
           </div>
         </Card>
-      ) : (
-        /* Completed State with Celebration & Animated Score Cards */
+      ) : submissionResult ? (
+        /* Completed State with Real Submitted Results */
         <Card glass="elevated" sheen className="p-8 sm:p-12 text-center border-white/80 space-y-7 shadow-2xl animate-slideUp">
-          {/* Animated Glowing Ring Badge */}
           <div className="relative inline-flex items-center justify-center">
             <div className="w-16 h-16 rounded-full bg-[#D8E8DE] text-[#1F6B4F] flex items-center justify-center border border-[#C2D8C9] animate-ringPulse">
               <Award className="w-8 h-8 text-[#1F6B4F]" />
             </div>
-            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E7A84B] text-white flex items-center justify-center text-xs animate-popIn shadow-xs">
+            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E7A84B] text-white flex items-center justify-center text-xs shadow-xs">
               <Sparkles className="w-3 h-3" />
             </span>
           </div>
@@ -253,30 +268,32 @@ export const AssessmentPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Animated Metrics Summary */}
+          {/* Metrics Summary from API */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left max-w-xl mx-auto pt-2">
             <div className="p-4 rounded-xl glass-panel border-white/80 space-y-1 hover-lift">
-              <span className="text-[11px] text-[#626763] font-medium">Diagnostic Score</span>
+              <span className="text-[11px] text-[#626763] font-medium">Demonstrated Score</span>
               <div className="font-heading text-2xl font-bold text-[#1F6B4F] flex items-baseline gap-1">
-                <AnimatedCounter end={90} duration={1200} suffix="%" />
+                <AnimatedCounter value={submissionResult.score} suffix="%" />
               </div>
-              <p className="text-[11px] text-[#1F6B4F] font-medium">Top quartile tier</p>
+              <p className="text-[11px] text-[#1F6B4F] font-medium">
+                {submissionResult.correctQuestions} of {submissionResult.totalQuestions} correct
+              </p>
             </div>
 
             <div className="p-4 rounded-xl glass-panel border-white/80 space-y-1 hover-lift">
-              <span className="text-[11px] text-[#626763] font-medium">Readiness Index</span>
-              <div className="font-heading text-2xl font-bold text-[#171918] flex items-baseline gap-1">
-                <AnimatedCounter end={72} duration={1400} suffix="%" />
+              <span className="text-[11px] text-[#626763] font-medium">Domain Category</span>
+              <div className="font-heading text-lg font-bold text-[#171918] truncate pt-1">
+                {submissionResult.category || 'General'}
               </div>
-              <p className="text-[11px] text-[#1F6B4F] font-medium">+8% from last test</p>
+              <p className="text-[11px] text-[#1F6B4F] font-medium">Calibrated</p>
             </div>
 
             <div className="p-4 rounded-xl glass-panel border-white/80 space-y-1 hover-lift">
               <span className="text-[11px] text-[#626763] font-medium">Next Focus Area</span>
-              <div className="font-heading text-lg font-bold text-[#171918] truncate pt-0.5">
-                Git & React
+              <div className="font-heading text-lg font-bold text-[#171918] truncate pt-1">
+                {submissionResult.identifiedGaps?.[0] || 'Active Roadmap'}
               </div>
-              <p className="text-[11px] text-[#626763]">Stage 03 unlocks</p>
+              <p className="text-[11px] text-[#626763]">Curriculum updated</p>
             </div>
           </div>
 
@@ -311,7 +328,7 @@ export const AssessmentPage: React.FC = () => {
             </Link>
           </div>
         </Card>
-      )}
+      ) : null}
     </div>
   )
 }

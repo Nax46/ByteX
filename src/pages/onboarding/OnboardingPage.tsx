@@ -21,43 +21,52 @@ import {
   ArrowLeft,
   CheckCircle2,
 } from 'lucide-react'
+import {
+  CAREER_GOAL_OPTIONS,
+  FOCUS_AREA_OPTIONS,
+  STUDY_HOURS_OPTIONS,
+  TIMELINE_OPTIONS,
+  STUDENT_STATUS_OPTIONS,
+} from '@/data/demo.careers'
 
-const INITIAL_ONBOARDING_STATE: OnboardingPayload = {
+const getInitialOnboardingState = (name?: string): OnboardingPayload => ({
   personalInfo: {
-    fullName: 'Alex Patel',
-    headline: 'Student & Aspiring Frontend Developer',
-    location: 'Mumbai, India',
+    fullName: name || '',
+    headline: '',
+    location: '',
     preferredLanguage: 'English',
   },
   education: {
-    institution: 'College of Computer Applications',
-    degree: 'Bachelor of Computer Applications (BCA)',
-    fieldOfStudy: 'Computer Applications',
-    graduationYear: 2026,
+    institution: '',
+    degree: '',
+    fieldOfStudy: '',
+    graduationYear: new Date().getFullYear(),
     currentStatus: 'student',
   },
   skills: {
-    knownSkills: ['HTML5 & CSS3', 'JavaScript', 'SQL', 'Problem Solving'],
-    primaryFocus: 'Frontend Development',
-    yearsOfExperience: 1,
+    knownSkills: [],
+    primaryFocus: '',
+    yearsOfExperience: 0,
   },
   careerGoal: {
-    targetRole: 'Frontend Developer',
+    targetRole: '',
     targetTimelineMonths: 6,
     targetCompanyType: 'startup',
   },
   interests: {
-    preferredLearningFormat: ['projects', 'interactive', 'videos'],
-    weeklyCommitmentHours: 15,
+    preferredLearningFormat: ['projects', 'interactive'],
+    weeklyCommitmentHours: 10,
     openToMentorship: true,
   },
-}
+})
 
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate()
-  const { isMockMode } = useAuth()
+  const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(1)
-  const [formData, setFormData] = useState<OnboardingPayload>(INITIAL_ONBOARDING_STATE)
+  const [formData, setFormData] = useState<OnboardingPayload>(() =>
+    getInitialOnboardingState(user?.name)
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [skillInput, setSkillInput] = useState('')
 
@@ -102,11 +111,7 @@ export const OnboardingPage: React.FC = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
-      if (!isMockMode) {
-        await profileApi.submitOnboarding(formData)
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 600))
-      }
+      await profileApi.submitOnboarding(formData)
       navigate(ROUTES.DASHBOARD)
     } catch {
       navigate(ROUTES.DASHBOARD)
@@ -163,7 +168,7 @@ export const OnboardingPage: React.FC = () => {
                   personalInfo: { ...formData.personalInfo, fullName: e.target.value },
                 })
               }
-              placeholder="e.g. Alex Patel"
+              placeholder="e.g. Jane Doe"
               required
             />
 
@@ -256,12 +261,7 @@ export const OnboardingPage: React.FC = () => {
                   },
                 })
               }
-              options={[
-                { value: 'student', label: 'College / University Student' },
-                { value: 'bootcamp', label: 'Bootcamp / Intensive Course' },
-                { value: 'self-taught', label: 'Self-Taught Student' },
-                { value: 'professional', label: 'Early Career Professional' },
-              ]}
+              options={STUDENT_STATUS_OPTIONS}
             />
           </div>
         )}
@@ -319,13 +319,7 @@ export const OnboardingPage: React.FC = () => {
                   skills: { ...formData.skills, primaryFocus: e.target.value },
                 })
               }
-              options={[
-                { value: 'Frontend Development', label: 'Frontend Web Development' },
-                { value: 'UI/UX Design', label: 'UI/UX & Product Design' },
-                { value: 'Backend Development', label: 'Backend Engineering & APIs' },
-                { value: 'Data Analytics', label: 'Data Analysis & SQL' },
-                { value: 'AI Engineering', label: 'AI & Machine Learning' },
-              ]}
+              options={FOCUS_AREA_OPTIONS}
             />
           </div>
         )}
@@ -352,13 +346,7 @@ export const OnboardingPage: React.FC = () => {
                   careerGoal: { ...formData.careerGoal, targetRole: e.target.value },
                 })
               }
-              options={[
-                { value: 'Frontend Developer', label: 'Frontend Developer (Recommended)' },
-                { value: 'UI/UX Designer', label: 'UI/UX Designer & Design Engineer' },
-                { value: 'Data Analyst', label: 'Data Analyst' },
-                { value: 'Cybersecurity Analyst', label: 'Cybersecurity Analyst' },
-                { value: 'AI / ML Engineer', label: 'AI / ML Engineer' },
-              ]}
+              options={CAREER_GOAL_OPTIONS}
             />
 
             <Select
@@ -370,11 +358,7 @@ export const OnboardingPage: React.FC = () => {
                   careerGoal: { ...formData.careerGoal, targetTimelineMonths: Number(e.target.value) },
                 })
               }
-              options={[
-                { value: 3, label: '3 Months (Accelerated)' },
-                { value: 6, label: '6 Months (Recommended)' },
-                { value: 12, label: '12 Months (Comprehensive)' },
-              ]}
+              options={TIMELINE_OPTIONS}
             />
           </div>
         )}
@@ -404,11 +388,7 @@ export const OnboardingPage: React.FC = () => {
                   },
                 })
               }
-              options={[
-                { value: 5, label: '5-10 Hours / week (Steady)' },
-                { value: 15, label: '15-20 Hours / week (Active)' },
-                { value: 30, label: '30+ Hours / week (Intensive)' },
-              ]}
+              options={STUDY_HOURS_OPTIONS}
             />
 
             <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1">
