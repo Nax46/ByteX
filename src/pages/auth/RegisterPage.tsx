@@ -65,7 +65,7 @@ export const RegisterPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    clearError()
+    clearError?.()
     setFormWarning(null)
 
     const { errors, emptyFields } = validate()

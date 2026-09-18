@@ -25,7 +25,7 @@ export const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    clearError()
+    clearError?.()
     setValidationError(null)
 
     if (!email) {
@@ -64,7 +64,7 @@ export const LoginPage: React.FC = () => {
   const handleApplyDemoAccount = (demoEmail: string, demoPass: string) => {
     setEmail(demoEmail)
     setPassword(demoPass)
-    clearError()
+    clearError?.()
     setValidationError(null)
   }
 
