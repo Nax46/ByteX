@@ -1,0 +1,94 @@
+import React from 'react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { useAuth } from '@/hooks/useAuth'
+import { ROUTES } from '@/constants/routes'
+import { Database, Bell } from 'lucide-react'
+
+export const SettingsPage: React.FC = () => {
+  const { isMockMode, toggleMockMode } = useAuth()
+
+  return (
+    <div className="space-y-7 max-w-4xl mx-auto animate-fadeIn py-2">
+      <PageHeader
+        title="Settings & Preferences"
+        subtitle="Manage your learning notifications, study preferences, and runtime modes."
+        breadcrumbs={[
+          { label: 'Dashboard', href: ROUTES.DASHBOARD },
+          { label: 'Settings' },
+        ]}
+      />
+
+      {/* Integration & Developer Environment */}
+      <Card className="p-6 sm:p-7 bg-white border-[#E5E5DF]">
+        <div className="flex items-center gap-3 pb-4 border-b border-[#E5E5DF]">
+          <div className="w-9 h-9 rounded-lg bg-[#D8E8DE]/60 text-[#1F6B4F] flex items-center justify-center">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-heading text-base font-bold text-[#171918]">Data Source Mode</h3>
+            <p className="text-xs text-[#626763]">Control API fallback behavior for hackathon evaluation</p>
+          </div>
+        </div>
+
+        <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs sm:text-sm font-medium text-[#171918]">
+              Current Mode:{' '}
+              {isMockMode ? (
+                <span className="text-[#A66E1D] font-bold">Isolated Academic Demo Mode</span>
+              ) : (
+                <span className="text-[#1F6B4F] font-bold">Live API Server</span>
+              )}
+            </p>
+            <p className="text-xs text-[#626763] mt-1 max-w-md leading-relaxed">
+              In demo mode, SkillPath provides deterministic student profiles (Alex Patel) and verified skill evaluations without requiring backend database services.
+            </p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toggleMockMode()}
+            className="shrink-0 text-xs"
+          >
+            Switch to {isMockMode ? 'Live API Server' : 'Academic Demo Mode'}
+          </Button>
+        </div>
+      </Card>
+
+      {/* Notifications */}
+      <Card className="p-6 sm:p-7 bg-white border-[#E5E5DF]">
+        <div className="flex items-center gap-3 pb-4 border-b border-[#E5E5DF]">
+          <div className="w-9 h-9 rounded-lg bg-[#D8E8DE]/60 text-[#1F6B4F] flex items-center justify-center">
+            <Bell className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-heading text-base font-bold text-[#171918]">Learning Reminders</h3>
+            <p className="text-xs text-[#626763]">Weekly progress digests and roadmap step notifications</p>
+          </div>
+        </div>
+
+        <div className="pt-4 space-y-3.5 text-xs">
+          <label className="flex items-center gap-3 text-[#171918] cursor-pointer">
+            <input
+              type="checkbox"
+              defaultChecked
+              className="rounded border-[#E5E5DF] text-[#1F6B4F] focus:ring-[#1F6B4F] h-4 w-4"
+            />
+            <span>Receive weekly email summary of closed skill gaps and roadmap milestones</span>
+          </label>
+          <label className="flex items-center gap-3 text-[#171918] cursor-pointer">
+            <input
+              type="checkbox"
+              defaultChecked
+              className="rounded border-[#E5E5DF] text-[#1F6B4F] focus:ring-[#1F6B4F] h-4 w-4"
+            />
+            <span>Enable streak reminders when daily practice has not been completed</span>
+          </label>
+        </div>
+      </Card>
+    </div>
+  )
+}
