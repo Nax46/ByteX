@@ -1,3 +1,36 @@
+export type AssessmentStatus = 'IN_PROGRESS' | 'SUBMITTED' | 'COMPLETED' | 'ABANDONED'
+
+export interface SafeAssessmentAttempt {
+  id: string
+  userId: string
+  status: AssessmentStatus
+  startedAt: string
+  submittedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AssessmentStartResponse {
+  attempt: SafeAssessmentAttempt
+  isExisting: boolean
+}
+
+export interface AssessmentAttemptResponse {
+  attempt: SafeAssessmentAttempt
+}
+
+export interface AssessmentHistoryPagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+export interface AssessmentHistoryResponse {
+  attempts: SafeAssessmentAttempt[]
+  pagination: AssessmentHistoryPagination
+}
+
 export type QuestionType = 'MULTIPLE_CHOICE' | 'CODE_SNIPPET' | 'SCENARIO'
 
 export interface AssessmentQuestion {
@@ -36,3 +69,4 @@ export interface AssessmentResult {
   identifiedGaps: string[]
   recommendedRoadmapSteps: string[]
 }
+

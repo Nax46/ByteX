@@ -1,12 +1,28 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
+import { LoadingState } from '@/components/common/LoadingState'
+import { ErrorState } from '@/components/common/ErrorState'
+import { assessmentApi } from '@/api/endpoints/assessment.api'
+import { SafeAssessmentAttempt, AssessmentHistoryResponse } from '@/types/assessment.types'
 import { ROUTES } from '@/constants/routes'
-import { CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Award, RotateCcw } from 'lucide-react'
+import {
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  Sparkles,
+  Award,
+  RotateCcw,
+  Clock,
+  History,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
 
 interface QuestionItem {
   id: string
@@ -22,11 +38,13 @@ interface QuestionItem {
 const ASSESSMENT_QUESTIONS: QuestionItem[] = [
   {
     id: 'q7',
-    number: 7,
-    total: 10,
+    number: 1,
+    total: 4,
     category: 'Frontend Development & Responsive Design',
-    question: 'You need to make a web layout fluid across mobile, tablet, and widescreen displays. Which approach represents modern best practice?',
-    explanation: 'Mobile-first design with CSS custom properties and relative units (rem, em, %) prevents layout breaks and minimizes media query bloat.',
+    question:
+      'You need to make a web layout fluid across mobile, tablet, and widescreen displays. Which approach represents modern best practice?',
+    explanation:
+      'Mobile-first design with CSS custom properties and relative units (rem, em, %) prevents layout breaks and minimizes media query bloat.',
     choices: [
       'Use a mobile-first CSS architecture with relative units (rem, em, %) and fluid media queries',
       'Create separate HTML files for desktop and mobile devices and redirect users via JavaScript',
@@ -37,11 +55,13 @@ const ASSESSMENT_QUESTIONS: QuestionItem[] = [
   },
   {
     id: 'q8',
-    number: 8,
-    total: 10,
+    number: 2,
+    total: 4,
     category: 'Modern JavaScript (ES6+)',
-    question: 'In JavaScript asynchronous programming, what is the primary benefit of async/await over raw Promise chains (.then/.catch)?',
-    explanation: 'Async/await allows asynchronous code to be read and structured sequentially with standard try/catch error handling.',
+    question:
+      'In JavaScript asynchronous programming, what is the primary benefit of async/await over raw Promise chains (.then/.catch)?',
+    explanation:
+      'Async/await allows asynchronous code to be read and structured sequentially with standard try/catch error handling.',
     choices: [
       'It executes promises in parallel threads using native multi-core CPU workers',
       'It provides synchronous-looking syntax with native try/catch blocks, improving readability and debugging',
@@ -52,11 +72,13 @@ const ASSESSMENT_QUESTIONS: QuestionItem[] = [
   },
   {
     id: 'q9',
-    number: 9,
-    total: 10,
+    number: 3,
+    total: 4,
     category: 'Git & Version Control',
-    question: 'When collaborating with a development team, why is creating isolated feature branches preferred over committing directly to main?',
-    explanation: 'Feature branches isolate ongoing work, facilitate thorough pull request code reviews, and keep the main branch stable and deployable.',
+    question:
+      'When collaborating with a development team, why is creating isolated feature branches preferred over committing directly to main?',
+    explanation:
+      'Feature branches isolate ongoing work, facilitate thorough pull request code reviews, and keep the main branch stable and deployable.',
     choices: [
       'It permanently conceals unfinished commits from other contributors on GitHub',
       'It isolates new functionality for clean peer review and CI testing without risking main branch stability',
@@ -67,11 +89,13 @@ const ASSESSMENT_QUESTIONS: QuestionItem[] = [
   },
   {
     id: 'q10',
-    number: 10,
-    total: 10,
+    number: 4,
+    total: 4,
     category: 'Component Architecture & State',
-    question: 'In modern React, what happens when state is lifted up to a shared common ancestor component?',
-    explanation: 'Lifting state up establishes a single source of truth, enabling coordinated data flow between sibling components via props.',
+    question:
+      'In modern React, what happens when state is lifted up to a shared common ancestor component?',
+    explanation:
+      'Lifting state up establishes a single source of truth, enabling coordinated data flow between sibling components via props.',
     choices: [
       'It establishes a single source of truth so sibling components can share and synchronize data predictably',
       'It converts functional components back into legacy class components for backward compatibility',
@@ -84,14 +108,89 @@ const ASSESSMENT_QUESTIONS: QuestionItem[] = [
 
 export const AssessmentPage: React.FC = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const paramAttemptId = searchParams.get('attemptId')
+
+  const [attempt, setAttempt] = useState<SafeAssessmentAttempt | null>(null)
+  const [isExisting, setIsExisting] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
   const [currentIdx, setCurrentIdx] = useState<number>(0)
   const [answers, setAnswers] = useState<Record<number, number>>({ 0: 0 })
   const [isCompleted, setIsCompleted] = useState<boolean>(false)
   const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right')
 
-  const currentQ = ASSESSMENT_QUESTIONS[currentIdx]
-  const selectedChoice = answers[currentIdx] ?? null
-  const progressPercent = ((currentQ.number) / currentQ.total) * 100
+  // History section state
+  const [history, setHistory] = useState<AssessmentHistoryResponse | null>(null)
+  const [showHistory, setShowHistory] = useState<boolean>(false)
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false)
+
+  const initializeAssessment = useCallback(
+    async (isMounted: () => boolean) => {
+      setIsLoading(true)
+      setError(null)
+      setSubmitError(null)
+
+      try {
+        if (paramAttemptId) {
+          // Fetch specific attempt from route query
+          const fetchedAttempt = await assessmentApi.getAttempt(paramAttemptId)
+          if (isMounted()) {
+            setAttempt(fetchedAttempt)
+            if (fetchedAttempt.status === 'SUBMITTED' || fetchedAttempt.status === 'COMPLETED') {
+              setIsCompleted(true)
+            } else {
+              setIsExisting(true)
+              setIsCompleted(false)
+            }
+          }
+        } else {
+          // Start or resume active attempt via POST /api/assessment/start
+          const { attempt: startedAttempt, isExisting: activeFound } =
+            await assessmentApi.startAssessment()
+          if (isMounted()) {
+            setAttempt(startedAttempt)
+            setIsExisting(activeFound)
+            if (startedAttempt.status === 'SUBMITTED' || startedAttempt.status === 'COMPLETED') {
+              setIsCompleted(true)
+            } else {
+              setIsCompleted(false)
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if (isMounted()) {
+          const message =
+            err && typeof err === 'object' && 'message' in err
+              ? String((err as { message: string }).message)
+              : 'Unable to initialize assessment session.'
+          setError(message)
+          console.error('Assessment initialization failed:', err)
+        }
+      } finally {
+        if (isMounted()) {
+          setIsLoading(false)
+        }
+      }
+    },
+    [paramAttemptId]
+  )
+
+  useEffect(() => {
+    let mounted = true
+    initializeAssessment(() => mounted)
+    return () => {
+      mounted = false
+    }
+  }, [initializeAssessment])
+
+  const handleRetry = () => {
+    let mounted = true
+    initializeAssessment(() => mounted)
+  }
 
   const handleSelectChoice = (choiceIdx: number) => {
     setAnswers((prev) => ({
@@ -100,12 +199,47 @@ export const AssessmentPage: React.FC = () => {
     }))
   }
 
+  const handleSubmitAssessment = async () => {
+    if (!attempt) return
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      // Map user answers for backend submission
+      const mappedAnswers = Object.entries(answers).map(([idxStr, choiceIdx]) => {
+        const qIndex = Number(idxStr)
+        const q = ASSESSMENT_QUESTIONS[qIndex]
+        return {
+          questionId: q ? q.id : `q_${qIndex}`,
+          selectedOptionId: `opt_${choiceIdx}`,
+        }
+      })
+
+      const submittedAttempt = await assessmentApi.submitAssessment(attempt.id, {
+        answers: mappedAnswers,
+      })
+
+      setAttempt(submittedAttempt)
+      setIsCompleted(true)
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Failed to submit assessment. Please try again.'
+      setSubmitError(message)
+      console.error('Assessment submission error:', err)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleNext = () => {
     if (currentIdx < ASSESSMENT_QUESTIONS.length - 1) {
       setSlideDirection('right')
       setCurrentIdx((prev) => prev + 1)
     } else {
-      setIsCompleted(true)
+      handleSubmitAssessment()
     }
   }
 
@@ -118,11 +252,79 @@ export const AssessmentPage: React.FC = () => {
     }
   }
 
-  const handleRestart = () => {
+  const handleRestart = async () => {
+    setIsLoading(true)
+    setError(null)
+    setSubmitError(null)
     setCurrentIdx(0)
     setAnswers({ 0: 0 })
     setIsCompleted(false)
+
+    if (paramAttemptId) {
+      setSearchParams({})
+    }
+
+    try {
+      const { attempt: newAttempt, isExisting: activeFound } =
+        await assessmentApi.startAssessment()
+      setAttempt(newAttempt)
+      setIsExisting(activeFound)
+      if (newAttempt.status === 'SUBMITTED' || newAttempt.status === 'COMPLETED') {
+        setIsCompleted(true)
+      }
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Unable to start new assessment.'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
   }
+
+  const toggleHistory = async () => {
+    const nextState = !showHistory
+    setShowHistory(nextState)
+    if (nextState && !history) {
+      setLoadingHistory(true)
+      try {
+        const res = await assessmentApi.getHistory(1, 10)
+        setHistory(res)
+      } catch (err) {
+        console.error('Failed to load assessment history:', err)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-3xl mx-auto py-8">
+        <LoadingState
+          message="Preparing your diagnostic skill assessment..."
+          minHeight="min-h-[350px]"
+        />
+      </div>
+    )
+  }
+
+  if (error || !attempt) {
+    return (
+      <div className="max-w-3xl mx-auto py-8">
+        <ErrorState
+          title="Assessment Session Unavailable"
+          message={error || 'Unable to access assessment attempt.'}
+          onRetry={handleRetry}
+        />
+      </div>
+    )
+  }
+
+  const currentQ = ASSESSMENT_QUESTIONS[currentIdx]
+  const selectedChoice = answers[currentIdx] ?? null
+  const progressPercent = (currentQ.number / currentQ.total) * 100
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn py-4">
@@ -135,8 +337,27 @@ export const AssessmentPage: React.FC = () => {
         ]}
       />
 
+      {/* Resumed Attempt Notice */}
+      {isExisting && !isCompleted && (
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#D8E8DE]/70 border border-[#C2D8C9] text-xs text-[#1F6B4F] animate-slideUp">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span>
+              Resumed in-progress assessment started on{' '}
+              {new Date(attempt.startedAt).toLocaleString()}.
+            </span>
+          </div>
+          <Badge variant="forest" size="sm">
+            Active Attempt
+          </Badge>
+        </div>
+      )}
+
       {!isCompleted ? (
-        <Card glass="elevated" className="p-6 sm:p-8 border-white/80 space-y-6 shadow-2xl relative overflow-hidden">
+        <Card
+          glass="elevated"
+          className="p-6 sm:p-8 border-white/80 space-y-6 shadow-2xl relative overflow-hidden"
+        >
           {/* Progress Header with animated smooth bar */}
           <div className="space-y-2 pb-4 border-b border-[#E5E5DF]/70">
             <div className="flex items-center justify-between text-xs">
@@ -148,11 +369,8 @@ export const AssessmentPage: React.FC = () => {
                 {currentQ.category}
               </span>
             </div>
-            <ProgressBar
-              value={progressPercent}
-              size="sm"
-              variant="forest"
-            />
+
+            <ProgressBar value={progressPercent} size="sm" variant="forest" />
           </div>
 
           {/* Animated Question Content Container */}
@@ -206,6 +424,14 @@ export const AssessmentPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Submission error message if applicable */}
+          {submitError && (
+            <div className="p-3.5 rounded-xl bg-[#FCE8E6] border border-[#F5D5D3] flex items-center gap-2 text-xs text-[#B83834] animate-fadeIn">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           {/* Navigation Controls */}
           <div className="flex items-center justify-between pt-6 border-t border-[#E5E5DF]/70">
             <Button
@@ -213,6 +439,7 @@ export const AssessmentPage: React.FC = () => {
               size="sm"
               leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
               onClick={handlePrev}
+              disabled={isSubmitting}
             >
               {currentIdx === 0 ? 'Back to Dashboard' : 'Previous'}
             </Button>
@@ -220,17 +447,29 @@ export const AssessmentPage: React.FC = () => {
             <Button
               variant="primary"
               size="md"
-              disabled={selectedChoice === null}
+              disabled={selectedChoice === null || isSubmitting}
               onClick={handleNext}
-              rightIcon={<ArrowRight className="w-3.5 h-3.5 group-hover-arrow" />}
+              rightIcon={
+                !isSubmitting ? (
+                  <ArrowRight className="w-3.5 h-3.5 group-hover-arrow" />
+                ) : undefined
+              }
             >
-              {currentIdx === ASSESSMENT_QUESTIONS.length - 1 ? 'Submit Assessment' : 'Next Question'}
+              {isSubmitting
+                ? 'Submitting...'
+                : currentIdx === ASSESSMENT_QUESTIONS.length - 1
+                ? 'Submit Assessment'
+                : 'Next Question'}
             </Button>
           </div>
         </Card>
       ) : (
-        /* Completed State with Celebration & Animated Score Cards */
-        <Card glass="elevated" sheen className="p-8 sm:p-12 text-center border-white/80 space-y-7 shadow-2xl animate-slideUp">
+        /* Completed State with Celebration & Real Attempt Metadata */
+        <Card
+          glass="elevated"
+          sheen
+          className="p-8 sm:p-12 text-center border-white/80 space-y-7 shadow-2xl animate-slideUp"
+        >
           {/* Animated Glowing Ring Badge */}
           <div className="relative inline-flex items-center justify-center">
             <div className="w-16 h-16 rounded-full bg-[#D8E8DE] text-[#1F6B4F] flex items-center justify-center border border-[#C2D8C9] animate-ringPulse">
@@ -242,41 +481,48 @@ export const AssessmentPage: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <div className="inline-block px-3.5 py-1 rounded-full glass-pill text-[#1F6B4F] text-xs font-bold uppercase tracking-wider">
-              Diagnostic Complete
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full glass-pill text-[#1F6B4F] text-xs font-bold uppercase tracking-wider">
+              <span>Assessment {attempt.status}</span>
+              <span className="font-mono opacity-70">#{attempt.id.slice(-6)}</span>
             </div>
             <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[#171918]">
               Assessment Verified & Calibrated
             </h2>
             <p className="text-sm text-[#626763] max-w-md mx-auto leading-relaxed">
-              We've processed your responses across core engineering domains. Your competency profile has been updated in real-time.
+              We've processed your responses across core engineering domains. Your competency profile
+              has been recorded in real-time.
             </p>
+            {attempt.submittedAt && (
+              <p className="text-xs text-[#626763]">
+                Submitted on {new Date(attempt.submittedAt).toLocaleString()}
+              </p>
+            )}
           </div>
 
-          {/* Animated Metrics Summary */}
+          {/* Real Metrics Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left max-w-xl mx-auto pt-2">
             <div className="p-4 rounded-xl glass-panel border-white/80 space-y-1 hover-lift">
-              <span className="text-[11px] text-[#626763] font-medium">Diagnostic Score</span>
-              <div className="font-heading text-2xl font-bold text-[#1F6B4F] flex items-baseline gap-1">
-                <AnimatedCounter end={90} duration={1200} suffix="%" />
+              <span className="text-[11px] text-[#626763] font-medium">Attempt Status</span>
+              <div className="font-heading text-xl font-bold text-[#1F6B4F] flex items-baseline gap-1">
+                {attempt.status}
               </div>
-              <p className="text-[11px] text-[#1F6B4F] font-medium">Top quartile tier</p>
+              <p className="text-[11px] text-[#1F6B4F] font-medium">Verified in database</p>
             </div>
 
             <div className="p-4 rounded-xl glass-panel border-white/80 space-y-1 hover-lift">
-              <span className="text-[11px] text-[#626763] font-medium">Readiness Index</span>
-              <div className="font-heading text-2xl font-bold text-[#171918] flex items-baseline gap-1">
-                <AnimatedCounter end={72} duration={1400} suffix="%" />
+              <span className="text-[11px] text-[#626763] font-medium">Questions Answered</span>
+              <div className="font-heading text-xl font-bold text-[#171918] flex items-baseline gap-1">
+                {Object.keys(answers).length} of {ASSESSMENT_QUESTIONS.length}
               </div>
-              <p className="text-[11px] text-[#1F6B4F] font-medium">+8% from last test</p>
+              <p className="text-[11px] text-[#1F6B4F] font-medium">100% completion rate</p>
             </div>
 
             <div className="p-4 rounded-xl glass-panel border-white/80 space-y-1 hover-lift">
-              <span className="text-[11px] text-[#626763] font-medium">Next Focus Area</span>
+              <span className="text-[11px] text-[#626763] font-medium">Next Milestone</span>
               <div className="font-heading text-lg font-bold text-[#171918] truncate pt-0.5">
-                Git & React
+                Skill Gap Matrix
               </div>
-              <p className="text-[11px] text-[#626763]">Stage 03 unlocks</p>
+              <p className="text-[11px] text-[#626763]">Stage analysis active</p>
             </div>
           </div>
 
@@ -292,26 +538,90 @@ export const AssessmentPage: React.FC = () => {
             </Button>
 
             <Link to={ROUTES.SKILL_GAP}>
-              <Button
-                variant="primary"
-                size="md"
-                rightIcon={<ArrowRight className="w-4 h-4" />}
-              >
+              <Button variant="primary" size="md" rightIcon={<ArrowRight className="w-4 h-4" />}>
                 View Updated Skill Gap
               </Button>
             </Link>
 
             <Link to={ROUTES.ROADMAP}>
-              <Button
-                variant="secondary"
-                size="md"
-              >
+              <Button variant="secondary" size="md">
                 Go to Roadmap
               </Button>
             </Link>
           </div>
         </Card>
       )}
+
+      {/* Collapsible Attempt History */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={toggleHistory}
+          className="flex items-center gap-2 text-xs font-semibold text-[#1F6B4F] hover:underline cursor-pointer py-2"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Past Assessment Attempts</span>
+          {showHistory ? (
+            <ChevronUp className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronDown className="w-3.5 h-3.5" />
+          )}
+        </button>
+
+        {showHistory && (
+          <div className="mt-3 space-y-2 animate-slideUp">
+            {loadingHistory ? (
+              <p className="text-xs text-[#626763] py-2">Loading attempt history...</p>
+            ) : history && history.attempts.length > 0 ? (
+              <div className="space-y-2">
+                {history.attempts.map((h) => (
+                  <div
+                    key={h.id}
+                    className="p-3.5 rounded-xl bg-white border border-[#E5E5DF] flex items-center justify-between text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <span className="font-mono text-[11px] text-[#171918] font-semibold">
+                        Attempt #{h.id.slice(-6)}
+                      </span>
+                      <p className="text-[11px] text-[#626763]">
+                        Started: {new Date(h.startedAt).toLocaleString()}
+                        {h.submittedAt && ` • Submitted: ${new Date(h.submittedAt).toLocaleString()}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          h.status === 'SUBMITTED' || h.status === 'COMPLETED'
+                            ? 'forest'
+                            : h.status === 'IN_PROGRESS'
+                            ? 'warning'
+                            : 'default'
+                        }
+                        size="sm"
+                      >
+                        {h.status}
+                      </Badge>
+                      {h.id !== attempt?.id && h.status === 'IN_PROGRESS' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSearchParams({ attemptId: h.id })
+                          }}
+                        >
+                          Resume
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[#626763] py-2">No prior assessment attempts found.</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
