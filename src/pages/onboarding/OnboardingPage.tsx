@@ -113,7 +113,8 @@ export const OnboardingPage: React.FC = () => {
     try {
       await profileApi.submitOnboarding(formData)
       navigate(ROUTES.DASHBOARD)
-    } catch {
+    } catch (err: unknown) {
+      console.error('Onboarding submission error:', err)
       navigate(ROUTES.DASHBOARD)
     } finally {
       setIsSubmitting(false)

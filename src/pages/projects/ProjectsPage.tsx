@@ -43,7 +43,7 @@ export const ProjectsPage: React.FC = () => {
     <div className="space-y-7 max-w-5xl mx-auto animate-fadeIn py-2">
       <PageHeader
         title="Hands-on Practice Projects"
-        subtitle="Apply what you learn by building real-world web components and frontend applications."
+        subtitle={`Apply what you learn by building real-world applications for your ${targetCareer} path.`}
         breadcrumbs={[
           { label: 'Dashboard', href: ROUTES.DASHBOARD },
           { label: 'Projects' },

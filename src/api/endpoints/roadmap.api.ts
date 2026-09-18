@@ -1,4 +1,4 @@
-import { apiClient } from '../client'
+import { apiClient } from '@/api/client'
 import { Roadmap, RoadmapMilestone } from '@/types/roadmap.types'
 import { DEMO_ROADMAP } from '@/data/demo.roadmap'
 
@@ -18,6 +18,45 @@ export const roadmapApi = {
     } catch {
       return DEMO_ROADMAP
     }
+  },
+
+  getRoadmapProgress: async (roadmapId?: string): Promise<{ progress: IRoadmapProgressSummary }> => {
+    const url = roadmapId ? `/v1/intelligence/roadmap/progress?roadmapId=${roadmapId}` : '/v1/intelligence/roadmap/progress'
+    const res = await apiClient.get<{ progress: IRoadmapProgressSummary }>(url)
+    return res.data
+  },
+
+  startModule: async (moduleId: string, roadmapId?: string): Promise<{ progress: IRoadmapProgressSummary }> => {
+    const res = await apiClient.post<{ progress: IRoadmapProgressSummary }>(`/v1/intelligence/roadmap/modules/${moduleId}/start`, {
+      roadmapId,
+    })
+    return res.data
+  },
+
+  updateModuleProgress: async (
+    moduleId: string,
+    progressPercent: number,
+    roadmapId?: string
+  ): Promise<{ progress: IRoadmapProgressSummary }> => {
+    const res = await apiClient.patch<{ progress: IRoadmapProgressSummary }>(`/v1/intelligence/roadmap/modules/${moduleId}/progress`, {
+      progressPercent,
+      roadmapId,
+    })
+    return res.data
+  },
+
+  completeModule: async (moduleId: string, roadmapId?: string): Promise<{ progress: IRoadmapProgressSummary }> => {
+    const res = await apiClient.post<{ progress: IRoadmapProgressSummary }>(`/v1/intelligence/roadmap/modules/${moduleId}/complete`, {
+      roadmapId,
+    })
+    return res.data
+  },
+
+  generateAdaptiveRoadmap: async (force?: boolean): Promise<{ roadmap: unknown }> => {
+    const res = await apiClient.post<{ roadmap: unknown }>('/v1/intelligence/roadmap/adaptive', {
+      force,
+    })
+    return res.data
   },
 
   updateMilestoneStatus: async (

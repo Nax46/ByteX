@@ -1,4 +1,4 @@
-import { apiClient } from '../client'
+import { apiClient } from '@/api/client'
 import { AuthResponse, LoginCredentials, RegisterCredentials } from '@/types/auth.types'
 import { UserProfile } from '@/types/user.types'
 
@@ -26,8 +26,8 @@ export const authApi = {
   },
 
   getCurrentUser: async (): Promise<UserProfile> => {
-    // Endpoint contract placeholder: GET /auth/me
-    const res = await apiClient.get<UserProfile>('/auth/me')
-    return res.data
+    const res = await apiClient.get<{ user: UserProfile } | UserProfile>('/auth/me')
+    const dataAny = res.data as any
+    return dataAny?.user || dataAny
   },
 }

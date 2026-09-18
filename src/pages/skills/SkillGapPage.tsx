@@ -82,7 +82,7 @@ export const SkillGapPage: React.FC = () => {
               Your skill gap is your roadmap.
             </h2>
             <p className="text-xs sm:text-sm text-[#626763] max-w-xl leading-relaxed">
-              Instead of learning everything from scratch, focus directly on the specific gaps separating your current abilities from junior to mid-level engineering benchmarks.
+              Instead of learning everything from scratch, focus directly on the specific gaps separating your current abilities from engineering benchmarks.
             </p>
           </div>
 
@@ -180,10 +180,10 @@ export const SkillGapPage: React.FC = () => {
         <Card glass="interactive" className="p-6 border-white/80 space-y-4 hover-lift">
           <div className="flex items-center gap-2 pb-3 border-b border-[#E5E5DF]/70">
             <CheckCircle2 className="w-5 h-5 text-[#1F6B4F]" />
-            <h3 className="font-heading text-base font-bold text-[#171918]">Your strengths</h3>
+            <h3 className="font-heading text-base font-bold text-[#171918]">Verified Strengths</h3>
           </div>
           <p className="text-xs text-[#626763]">
-            Verified competencies where you already meet or exceed entry-level expectations:
+            Competencies where you already meet or exceed target expectations:
           </p>
 
           {strengths.length > 0 ? (
@@ -204,7 +204,7 @@ export const SkillGapPage: React.FC = () => {
         <Card glass="interactive" className="p-6 border-white/80 space-y-4 hover-lift">
           <div className="flex items-center gap-2 pb-3 border-b border-[#E5E5DF]/70">
             <Target className="w-5 h-5 text-[#E7A84B]" />
-            <h3 className="font-heading text-base font-bold text-[#171918]">Focus next</h3>
+            <h3 className="font-heading text-base font-bold text-[#171918]">Prioritized Focus Next</h3>
           </div>
           <p className="text-xs text-[#626763]">
             Highest-priority skills to study next to close your gap:

@@ -1,4 +1,4 @@
-import { apiClient } from '../client'
+import { apiClient } from '@/api/client'
 import {
   AssessmentQuestion,
   AssessmentResult,
@@ -141,5 +141,20 @@ export const assessmentApi = {
     } catch {
       return list
     }
+  },
+
+  getReassessmentSummary: async (): Promise<ReassessmentSummaryResponse> => {
+    const res = await apiClient.get<ReassessmentSummaryResponse>('/v1/intelligence/reassessment/summary')
+    return res.data
+  },
+
+  submitReassessment: async (
+    assessmentId: string,
+    answers: Array<{ questionId: string; selectedOptionId: string; timeTakenSeconds?: number }>
+  ): Promise<{ attempt: unknown }> => {
+    const res = await apiClient.post<{ attempt: unknown }>(`/v1/intelligence/reassessment/${assessmentId}/submit`, {
+      answers,
+    })
+    return res.data
   },
 }

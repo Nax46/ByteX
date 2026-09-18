@@ -74,6 +74,24 @@ export const DashboardPage: React.FC = () => {
 
   const firstName = user?.name ? user.name.split(' ')[0] : 'Learner'
 
+  const displayName = user?.name || dashboardSummary?.profile.fullName || 'Student'
+  const targetRole = skillReadout?.targetCareerTitle || dashboardSummary?.profile.targetCareer || 'Full Stack Developer'
+  const readinessScore = skillReadout?.overallReadinessScore ?? 0
+  const overallProgress = roadmapProgress?.overallProgress ?? 0
+  const snapshots = skillReadout?.snapshots || []
+  const metSkillsCount = skillReadout?.metSkillsCount ?? snapshots.filter((s) => s.gap === 0).length
+  const totalSkillsCount = skillReadout?.totalRequiredSkills ?? snapshots.length
+
+  // Find active module in roadmap
+  const activeModuleItem = roadmapProgress?.modules.find((m) => m.status === 'IN_PROGRESS') || roadmapProgress?.modules[0]
+  const activeModuleDetail = roadmapProgress?.roadmapDetails?.modules.find((m) => m.moduleId === activeModuleItem?.moduleId)
+  const currentCourseTitle = activeModuleDetail?.title || (snapshots.length > 0 ? `${snapshots[0].skillName} Fundamentals` : 'Skill Path Learning Track')
+  const currentModuleOrder = activeModuleDetail?.order || 1
+  const currentProgressPercent = activeModuleItem?.progressPercent ?? 0
+
+  // Priority gap recommendations
+  const priorityGaps = snapshots.filter((s) => s.gap > 0).sort((a, b) => a.priorityRank - b.priorityRank).slice(0, 3)
+
   return (
     <div className="space-y-7 animate-fadeIn">
       {/* 1. GREETING & CONTEXT */}
@@ -83,7 +101,7 @@ export const DashboardPage: React.FC = () => {
             Good day, {firstName} 👋
           </h1>
           <p className="text-xs sm:text-sm text-[#626763] mt-1">
-            Here's where you are in your learning journey.
+            Targeting: <strong className="text-[#171918]">{targetRole}</strong> • Here is your live skill intelligence readout.
           </p>
         </div>
 
@@ -210,7 +228,7 @@ export const DashboardPage: React.FC = () => {
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5DF]/70">
                 <div>
                   <h3 className="font-heading text-base font-bold text-[#171918]">Your Skill Snapshot</h3>
-                  <p className="text-xs text-[#626763] mt-0.5">Evaluated proficiency across core competencies</p>
+                  <p className="text-xs text-[#626763] mt-0.5">Live proficiency evaluation from MongoDB</p>
                 </div>
                 <Link to={ROUTES.SKILLS} className="text-xs font-semibold text-[#1F6B4F] hover:underline">
                   View all skills →

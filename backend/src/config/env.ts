@@ -2,8 +2,10 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { z } from 'zod';
 
-// Load .env file from backend root
+// Load .env file from working directory or relative backend root
+dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const envSchema = z.object({
   PORT: z
@@ -26,6 +28,9 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z
     .string()
     .default('7d'),
+  GEMINI_API_KEY: z
+    .string()
+    .optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

@@ -1,7 +1,8 @@
-import { User, IUserDocument, UserRole } from '../models/User';
-import { hashPassword, comparePassword } from '../utils/password';
-import { signToken } from '../utils/jwt';
-import { RegisterInput, LoginInput } from '../validators/auth.validator';
+import { User, IUserDocument, UserRole } from '../models/User.js';
+import { StudentProfile } from '../models/StudentProfile.js';
+import { hashPassword, comparePassword } from '../utils/password.js';
+import { signToken } from '../utils/jwt.js';
+import { RegisterInput, LoginInput } from '../validators/auth.validator.js';
 
 export class AuthError extends Error {
   statusCode: number;
@@ -15,6 +16,7 @@ export class AuthError extends Error {
 
 export interface SafeUser {
   id: string;
+  name: string;
   email: string;
   role: UserRole;
   createdAt?: Date;
@@ -27,11 +29,14 @@ export interface AuthResult {
 }
 
 /**
- * Normalizes user document into a safe response object excluding passwordHash.
+ * Normalizes user document into a safe response object excluding passwordHash,
+ * incorporating name from StudentProfile if available.
  */
-export const formatSafeUser = (user: IUserDocument): SafeUser => {
+export const formatSafeUser = async (user: IUserDocument): Promise<SafeUser> => {
+  const profile = await StudentProfile.findOne({ userId: user._id });
   return {
     id: user._id.toString(),
+    name: profile?.fullName || user.email.split('@')[0],
     email: user.email,
     role: user.role,
     createdAt: user.createdAt,
@@ -40,7 +45,7 @@ export const formatSafeUser = (user: IUserDocument): SafeUser => {
 };
 
 /**
- * Registers a new student account.
+ * Registers a new student account and creates associated StudentProfile.
  */
 export const registerUser = async (input: RegisterInput): Promise<AuthResult> => {
   const normalizedEmail = input.email.trim().toLowerCase();
@@ -55,21 +60,41 @@ export const registerUser = async (input: RegisterInput): Promise<AuthResult> =>
   const passwordHash = await hashPassword(input.password);
 
   // 3. Persist new user with hashed password
-  const user = await User.create({
-    email: normalizedEmail,
-    passwordHash,
-    role: UserRole.STUDENT,
+  let user: IUserDocument;
+  try {
+    user = await User.create({
+      email: normalizedEmail,
+      passwordHash,
+      role: UserRole.STUDENT,
+    });
+  } catch (err: any) {
+    if (err && (err.code === 11000 || err.name === 'MongoServerError')) {
+      throw new AuthError('Email already registered', 409);
+    }
+    throw err;
+  }
+
+  // 4. Create initial StudentProfile
+  const fullName = input.name && input.name.trim().length >= 2
+    ? input.name.trim()
+    : normalizedEmail.split('@')[0];
+
+  await StudentProfile.create({
+    userId: user._id,
+    fullName,
   });
 
-  // 4. Generate JWT
+  // 5. Generate JWT
   const token = signToken({
     userId: user._id.toString(),
     role: user.role,
   });
 
+  const safeUser = await formatSafeUser(user);
+
   return {
     token,
-    user: formatSafeUser(user),
+    user: safeUser,
   };
 };
 
@@ -98,9 +123,11 @@ export const loginUser = async (input: LoginInput): Promise<AuthResult> => {
     role: user.role,
   });
 
+  const safeUser = await formatSafeUser(user);
+
   return {
     token,
-    user: formatSafeUser(user),
+    user: safeUser,
   };
 };
 
@@ -113,5 +140,5 @@ export const getCurrentUser = async (userId: string): Promise<SafeUser> => {
     throw new AuthError('User not found', 404);
   }
 
-  return formatSafeUser(user);
+  return await formatSafeUser(user);
 };

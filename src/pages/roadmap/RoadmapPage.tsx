@@ -107,6 +107,12 @@ export const RoadmapPage: React.FC = () => {
         ]}
       />
 
+      {feedbackMsg && (
+        <div className="p-4 rounded-xl bg-[#D8E8DE]/80 border border-[#C2D8C9] text-xs font-semibold text-[#1F6B4F]">
+          {feedbackMsg}
+        </div>
+      )}
+
       {/* Progress Summary Card */}
       {milestones.length > 0 ? (
         <Card glass="elevated" sheen className="p-6 border-white/80 shadow-lg animate-slideUp">

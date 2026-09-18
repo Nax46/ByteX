@@ -98,7 +98,7 @@ export const AssessmentResultsPage: React.FC = () => {
               Your Demonstrated Skill Score
             </h2>
             <p className="text-xs sm:text-sm text-[#626763] max-w-md leading-relaxed">
-              You answered {result.correctQuestions} out of {result.totalQuestions} questions correctly. Your skills inventory and gap matrix have been updated.
+              Overall verified score: {overallCurrentScore}%. {overallChange >= 0 ? `+${overallChange}% improvement from prior evaluation.` : `${overallChange}% change.`}
             </p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Badge
@@ -124,7 +124,7 @@ export const AssessmentResultsPage: React.FC = () => {
               )}
             </div>
           </div>
-          <ProgressRing value={result.score} label="Score" variant="forest" size={130} />
+          <ProgressRing value={overallCurrentScore} label="Score" variant="forest" size={130} />
         </div>
       </Card>
 
@@ -158,7 +158,7 @@ export const AssessmentResultsPage: React.FC = () => {
           )}
         </Card>
 
-        {/* Identified Gaps */}
+        {/* Recommended Actions */}
         <Card className="p-6 bg-white border-[#E5E5DF]">
           <h3 className="font-heading text-base font-bold text-[#171918] mb-4">Identified Skill Gaps</h3>
           {result.identifiedGaps && result.identifiedGaps.length > 0 ? (

@@ -5,6 +5,7 @@ import { logger } from '../utils/logger';
 export interface AppError extends Error {
   statusCode?: number;
   errors?: unknown[];
+  code?: number;
 }
 
 /**
@@ -17,9 +18,14 @@ export const errorHandler = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: NextFunction
 ): void => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Internal Server Error';
   const errors = Array.isArray(err.errors) ? err.errors : [];
+
+  if (err.code === 11000 || err.name === 'MongoServerError') {
+    statusCode = 409;
+    message = 'Email already registered';
+  }
 
   logger.error({
     msg: 'Unhandled request error',
