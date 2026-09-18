@@ -9,24 +9,29 @@ export const AdminLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <div className="min-h-screen flex bg-[#F8F7F3] text-[#171918] relative overflow-x-hidden">
-      {/* Desktop Admin Sidebar */}
+    <div className="h-screen w-full flex bg-[#F8F7F3] text-[#171918] overflow-hidden select-none">
+      {/* Fixed Left Sidebar (Desktop) */}
       <AdminSidebar
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
       />
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer Navigation */}
       <AdminMobileNav
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 relative z-10">
-        <AdminHeader onMobileMenuToggle={() => setMobileMenuOpen(true)} />
+      {/* Right Content Area: Independently Scrollable Container */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative z-10">
+        <div className="shrink-0">
+          <AdminHeader onMobileMenuToggle={() => setMobileMenuOpen(true)} />
+        </div>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto overflow-y-auto">
+        <main
+          id="admin-main-container"
+          className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto select-text"
+        >
           <Outlet />
         </main>
       </div>

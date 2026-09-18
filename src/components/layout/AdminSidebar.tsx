@@ -54,16 +54,29 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, setIsCo
     navigate(ROUTES.LOGIN)
   }
 
+  const handleLogoClick = () => {
+    const container = document.getElementById('admin-main-container')
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col border-r border-[#E5E5DF] bg-white transition-all duration-200 z-30 select-none h-screen sticky top-0',
+        'hidden md:flex flex-col border-r border-[#E5E5DF] bg-white transition-all duration-200 z-30 select-none h-screen shrink-0 sticky top-0',
         isCollapsed ? 'w-20' : 'w-64'
       )}
     >
       {/* Brand Header */}
       <div className="h-18 border-b border-[#E5E5DF] flex items-center justify-between px-5">
-        <NavLink to={ROUTES.ADMIN_DASHBOARD} className="flex items-center gap-2">
+        <NavLink
+          to={ROUTES.ADMIN_DASHBOARD}
+          onClick={handleLogoClick}
+          className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F6B4F] rounded-lg"
+          title="Admin Dashboard"
+        >
           <SkillPathLogo showText={!isCollapsed} size="sm" />
           {!isCollapsed && (
             <Badge variant="outline" size="sm" className="bg-[#D8E8DE]/60 text-[#1F6B4F] text-[10px] font-semibold py-0.5">

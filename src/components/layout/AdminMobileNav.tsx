@@ -62,12 +62,24 @@ export const AdminMobileNav: React.FC<AdminMobileNavProps> = ({ isOpen, onClose 
       <div className="fixed inset-y-0 left-0 w-4/5 max-w-xs bg-white border-r border-[#E5E5DF] shadow-xl flex flex-col z-50 animate-slideRight">
         {/* Header */}
         <div className="h-18 border-b border-[#E5E5DF] flex items-center justify-between px-5">
-          <div className="flex items-center gap-2">
+          <NavLink
+            to={ROUTES.ADMIN_DASHBOARD}
+            onClick={() => {
+              onClose()
+              const container = document.getElementById('admin-main-container')
+              if (container) {
+                container.scrollTo({ top: 0, behavior: 'smooth' })
+              }
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F6B4F] rounded-lg"
+            title="Admin Dashboard"
+          >
             <SkillPathLogo size="sm" />
             <Badge variant="outline" size="sm" className="bg-[#D8E8DE]/60 text-[#1F6B4F] text-[10px]">
               Admin
             </Badge>
-          </div>
+          </NavLink>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-[#626763] hover:text-[#171918] hover:bg-[#F8F7F3]"
