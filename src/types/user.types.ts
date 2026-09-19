@@ -1,10 +1,12 @@
 export interface UserProfile {
   id: string
   name: string
+  fullName?: string
   email: string
   avatarUrl?: string
   role?: 'student' | 'mentor' | 'admin'
   careerGoal?: string
+  targetCareer?: string
   education?: {
     institution?: string
     degree?: string

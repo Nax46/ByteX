@@ -32,8 +32,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
 
   // Role validation
   if (allowedRoles && allowedRoles.length > 0) {
-    const userRole = user?.role || 'student'
-    if (!allowedRoles.includes(userRole)) {
+    const rawRole = user?.role ? String(user.role).toLowerCase() : 'student'
+    const userRole = rawRole === 'admin' ? 'admin' : rawRole === 'mentor' ? 'mentor' : 'student'
+    const normalizedAllowed = allowedRoles.map((r) => String(r).toLowerCase())
+
+    if (!normalizedAllowed.includes(userRole)) {
       // If a student tries to access the admin portal, deny access and send to student dashboard
       if (location.pathname.startsWith('/admin')) {
         return <Navigate to={ROUTES.DASHBOARD} replace />

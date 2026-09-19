@@ -1,6 +1,7 @@
 import { apiClient } from '@/api/client'
 import { Skill, SkillGap } from '@/types/skill.types'
 import { DEMO_SKILLS, DEMO_SKILL_GAPS } from '@/data/demo.skills'
+import { ISkillGapPriorityReadout } from '@/types/intelligence.types'
 
 /**
  * Skills & Gap Analysis API Module
@@ -14,8 +15,9 @@ import { DEMO_SKILLS, DEMO_SKILL_GAPS } from '@/data/demo.skills'
 export const skillsApi = {
   getSkills: async (): Promise<Skill[]> => {
     try {
-      const res = await apiClient.get<Skill[]>('/skills')
-      return res.data
+      const res = await apiClient.get<any>('/skills')
+      const raw = res.data?.data?.skills || res.data?.data || res.data?.skills || res.data
+      return Array.isArray(raw) ? raw : DEMO_SKILLS
     } catch {
       return DEMO_SKILLS
     }
@@ -23,8 +25,9 @@ export const skillsApi = {
 
   getSkillGaps: async (): Promise<SkillGap[]> => {
     try {
-      const res = await apiClient.get<SkillGap[]>('/skills/gaps')
-      return res.data
+      const res = await apiClient.get<any>('/skills/gaps')
+      const raw = res.data?.data?.gaps || res.data?.data || res.data?.gaps || res.data
+      return Array.isArray(raw) ? raw : DEMO_SKILL_GAPS
     } catch {
       return DEMO_SKILL_GAPS
     }

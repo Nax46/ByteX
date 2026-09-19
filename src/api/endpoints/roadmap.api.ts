@@ -1,6 +1,7 @@
 import { apiClient } from '@/api/client'
 import { Roadmap, RoadmapMilestone } from '@/types/roadmap.types'
 import { DEMO_ROADMAP } from '@/data/demo.roadmap'
+import { IRoadmapProgressSummary } from '@/types/intelligence.types'
 
 /**
  * Roadmap API Module
@@ -13,8 +14,12 @@ import { DEMO_ROADMAP } from '@/data/demo.roadmap'
 export const roadmapApi = {
   getCurrentRoadmap: async (): Promise<Roadmap> => {
     try {
-      const res = await apiClient.get<Roadmap>('/roadmap')
-      return res.data
+      const res = await apiClient.get<any>('/roadmap')
+      const raw = res.data?.data?.roadmap || res.data?.roadmap || res.data?.data || res.data
+      if (raw && typeof raw === 'object' && Array.isArray(raw.milestones)) {
+        return raw as Roadmap
+      }
+      return DEMO_ROADMAP
     } catch {
       return DEMO_ROADMAP
     }

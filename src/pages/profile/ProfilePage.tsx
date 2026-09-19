@@ -32,7 +32,7 @@ export const ProfilePage: React.FC = () => {
   const [skills, setSkills] = useState<Skill[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isEditing, setIsEditing] = useState(false)
-  const [careerGoal, setCareerGoal] = useState(user?.careerGoal || DEFAULT_CAREER_GOAL)
+  const [careerGoal, setCareerGoal] = useState(user?.careerGoal || user?.targetCareer || DEFAULT_CAREER_GOAL)
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
 
   useEffect(() => {
@@ -49,7 +49,8 @@ export const ProfilePage: React.FC = () => {
         if (!isMounted) return
         if (profileRes.status === 'fulfilled' && profileRes.value) {
           setProfile(profileRes.value)
-          if (profileRes.value.careerGoal) setCareerGoal(profileRes.value.careerGoal)
+          const goal = profileRes.value.careerGoal || profileRes.value.targetCareer
+          if (goal) setCareerGoal(goal)
         }
         if (statsRes.status === 'fulfilled') setStats(statsRes.value)
         if (skillsRes.status === 'fulfilled') setSkills(skillsRes.value || [])
@@ -70,7 +71,7 @@ export const ProfilePage: React.FC = () => {
     setCareerGoal(newGoal)
     setIsEditing(false)
     try {
-      await profileApi.updateProfile({ careerGoal: newGoal })
+      await profileApi.updateProfile({ careerGoal: newGoal, targetCareer: newGoal })
       await refreshUser()
       setSavedNotice(`Career target updated to ${newGoal}`)
     } catch {
@@ -221,10 +222,15 @@ export const ProfilePage: React.FC = () => {
                 <p className="font-heading text-base font-bold text-[#171918]">{careerGoal}</p>
               </div>
 
-              <div className="pt-2">
-                <Link to={ROUTES.ROADMAP}>
+              <div className="pt-2 flex items-center gap-2">
+                <Link to={ROUTES.CAREERS} className="flex-1">
                   <Button variant="outline" size="sm" className="w-full">
-                    View Personalized Roadmap →
+                    Change Target Career
+                  </Button>
+                </Link>
+                <Link to={ROUTES.ROADMAP} className="flex-1">
+                  <Button variant="primary" size="sm" className="w-full">
+                    View Roadmap →
                   </Button>
                 </Link>
               </div>

@@ -6,6 +6,7 @@ import {
 } from '@/types/assessment.types'
 import { DEMO_ASSESSMENT_QUESTIONS, DEMO_ASSESSMENT_RESULT } from '@/data/demo.assessment'
 import { safeStorage } from '@/utils/storage'
+import { ReassessmentSummaryResponse } from '@/types/intelligence.types'
 
 const LATEST_RESULT_KEY = 'skillpath_latest_assessment_result'
 
@@ -45,7 +46,8 @@ export const assessmentApi = {
       }
       categoryStats[q.category].total += 1
 
-      const userAnswer = payload.answers[q.id]
+      const qId = q.id || q._id || ''
+      const userAnswer = qId ? payload.answers[qId] : undefined
       const isCorrect = userAnswer === q.correctOptionId
 
       if (isCorrect) {

@@ -20,7 +20,9 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   size = 'md',
   className,
 }) => {
-  const percentage = Math.min(100, Math.max(0, Math.round((value / max) * 100)))
+  const safeVal = typeof value === 'number' && !isNaN(value) ? value : 0
+  const safeMax = typeof max === 'number' && !isNaN(max) && max > 0 ? max : 100
+  const percentage = Math.min(100, Math.max(0, Math.round((safeVal / safeMax) * 100)))
 
   const sizeStyles = {
     sm: 'h-1.5',

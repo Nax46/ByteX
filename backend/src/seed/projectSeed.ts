@@ -16,15 +16,20 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
     skillMap.set(s.slug, s);
   }
 
-  // 2. Load target career profile
-  const fullStackCareer = await CareerModel.findOne({ slug: 'full-stack-developer' }).lean();
+  // 2. Load target career profiles map by slug
+  const careers = await CareerModel.find().lean();
+  const careerMap = new Map<string, any>();
+  for (const c of careers) {
+    careerMap.set(c.slug, c);
+  }
 
-  // 3. Define 15+ practical demo projects
+  // 3. Define practical portfolio projects across all 7 careers
   const projectCatalog: Array<{
     title: string;
     slug: string;
     description: string;
     difficulty: ProjectDifficulty;
+    careerSlug: string;
     primarySkillSlug: string;
     reinforcedSkillSlugs: string[];
     technologies: string[];
@@ -33,13 +38,15 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
     architectureOverview?: string;
     learningObjectives?: string[];
   }> = [
+    // --- Full Stack & Web Projects ---
     {
       title: 'Interactive Task & Kanban Dashboard',
       slug: 'interactive-task-kanban-dashboard',
       description: 'Build an interactive drag-and-drop task management board with filter controls, local storage persistence, and dynamic state update callbacks.',
       difficulty: 'BEGINNER',
+      careerSlug: 'frontend-developer',
       primarySkillSlug: 'javascript',
-      reinforcedSkillSlugs: ['javascript', 'problem-solving'],
+      reinforcedSkillSlugs: ['javascript', 'html-css', 'problem-solving'],
       technologies: ['JavaScript', 'HTML5', 'CSS3', 'Local Storage API'],
       estimatedHours: 6,
       githubStarterUrl: 'https://github.com/skillpath-templates/kanban-starter',
@@ -51,8 +58,9 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
       slug: 'modern-component-library-design-system',
       description: 'Design and publish a reusable UI component catalog featuring accessible buttons, modals, dropdowns, and fluid responsive layouts.',
       difficulty: 'INTERMEDIATE',
+      careerSlug: 'frontend-developer',
       primarySkillSlug: 'react',
-      reinforcedSkillSlugs: ['react', 'javascript', 'problem-solving'],
+      reinforcedSkillSlugs: ['react', 'typescript', 'javascript'],
       technologies: ['React', 'TypeScript', 'Tailwind CSS', 'Storybook'],
       estimatedHours: 12,
       githubStarterUrl: 'https://github.com/skillpath-templates/react-design-system-starter',
@@ -64,6 +72,7 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
       slug: 'restful-ecommerce-microservice-api',
       description: 'Develop a scalable REST API server handling product catalogs, inventory updates, cart calculations, and JSON validation schemas.',
       difficulty: 'INTERMEDIATE',
+      careerSlug: 'backend-developer',
       primarySkillSlug: 'express',
       reinforcedSkillSlugs: ['express', 'node-js', 'rest-api'],
       technologies: ['Node.js', 'Express', 'Zod', 'REST API'],
@@ -77,6 +86,7 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
       slug: 'mongodb-data-indexing-analytics-engine',
       description: 'Architect a MongoDB analytics database with custom schema validations, compound indexes, aggregation pipelines, and bulk upsert runners.',
       difficulty: 'ADVANCED',
+      careerSlug: 'backend-developer',
       primarySkillSlug: 'mongodb',
       reinforcedSkillSlugs: ['mongodb', 'express', 'node-js'],
       technologies: ['MongoDB', 'Mongoose', 'TypeScript', 'Node.js'],
@@ -90,6 +100,7 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
       slug: 'jwt-auth-rbac-security-system',
       description: 'Implement end-to-end user authentication with double-submit cookie validation, refresh token rotation, password hashing, and RBAC guards.',
       difficulty: 'ADVANCED',
+      careerSlug: 'backend-developer',
       primarySkillSlug: 'authentication',
       reinforcedSkillSlugs: ['authentication', 'express', 'rest-api', 'mongodb'],
       technologies: ['Node.js', 'Express', 'JWT', 'bcryptjs', 'MongoDB'],
@@ -99,62 +110,11 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
       learningObjectives: ['Secure user passwords with bcrypt', 'Manage JWT access & refresh lifecycle', 'Build role-based auth middleware'],
     },
     {
-      title: 'Real-Time Async Job Queue & Event Dashboard',
-      slug: 'realtime-async-job-queue-dashboard',
-      description: 'Construct a background job processor handling async task queues, retry strategies, process logging, and real-time execution metrics.',
-      difficulty: 'INTERMEDIATE',
-      primarySkillSlug: 'node-js',
-      reinforcedSkillSlugs: ['node-js', 'javascript', 'rest-api'],
-      technologies: ['Node.js', 'EventEmitters', 'Express', 'Pino Logger'],
-      estimatedHours: 10,
-      githubStarterUrl: 'https://github.com/skillpath-templates/node-job-runner-starter',
-      architectureOverview: 'Node.js event-driven architecture using native EventEmitter pipelines and non-blocking asynchronous processing.',
-      learningObjectives: ['Master Node.js event loop mechanics', 'Handle async task retries and failures', 'Log structured diagnostics'],
-    },
-    {
-      title: 'API Rate Limiting & Gateway Proxy Service',
-      slug: 'api-rate-limiting-gateway-proxy',
-      description: 'Build a lightweight API Gateway forwarding requests to downstream microservices while enforcing token bucket rate limits and request logging.',
-      difficulty: 'INTERMEDIATE',
-      primarySkillSlug: 'rest-api',
-      reinforcedSkillSlugs: ['rest-api', 'express', 'node-js'],
-      technologies: ['Node.js', 'Express', 'http-proxy-middleware'],
-      estimatedHours: 8,
-      githubStarterUrl: 'https://github.com/skillpath-templates/api-gateway-starter',
-      architectureOverview: 'Reverse proxy server intercepting HTTP headers, validating client API keys, and throttling excessive client requests.',
-      learningObjectives: ['Implement rate-limiting algorithms', 'Proxy HTTP requests safely', 'Standardize API error schemas'],
-    },
-    {
-      title: 'Collaborative Multi-Branch Git Release Manager',
-      slug: 'collaborative-multibranch-git-release-manager',
-      description: 'Simulate a multi-developer git repository workflow resolving complex merge conflicts, rebasing feature branches, and configuring GitHub Actions CI.',
-      difficulty: 'BEGINNER',
-      primarySkillSlug: 'git',
-      reinforcedSkillSlugs: ['git', 'problem-solving'],
-      technologies: ['Git', 'GitHub Actions', 'Bash'],
-      estimatedHours: 4,
-      githubStarterUrl: 'https://github.com/skillpath-templates/git-workflow-lab',
-      architectureOverview: 'Git feature-branch release workflow enforcing trunk-based development, semantic commits, and pull request reviews.',
-      learningObjectives: ['Resolve complex git merge conflicts', 'Rebase feature branches onto main', 'Automate CI checks'],
-    },
-    {
-      title: 'Algorithmic Data Structure Visualizer & Benchmark Suite',
-      slug: 'algorithmic-ds-visualizer-benchmark-suite',
-      description: 'Create an interactive web application visualizing sorting algorithms (QuickSort, MergeSort) and measuring time/space complexity benchmarks.',
-      difficulty: 'INTERMEDIATE',
-      primarySkillSlug: 'problem-solving',
-      reinforcedSkillSlugs: ['problem-solving', 'javascript', 'react'],
-      technologies: ['JavaScript', 'React', 'TypeScript', 'Canvas API'],
-      estimatedHours: 12,
-      githubStarterUrl: 'https://github.com/skillpath-templates/algo-visualizer-starter',
-      architectureOverview: 'Interactive React application rendering algorithm execution steps using async delays and state snapshots.',
-      learningObjectives: ['Decompose complex algorithms', 'Visualize Big-O time complexity', 'Optimize UI render cycles'],
-    },
-    {
       title: 'Full Stack Web Developer Capstone Platform',
       slug: 'full-stack-web-developer-capstone-platform',
       description: 'End-to-end capstone application integrating React frontend, Express REST API backend, MongoDB Atlas database, JWT Auth, and adaptive roadmap analytics.',
       difficulty: 'ADVANCED',
+      careerSlug: 'full-stack-developer',
       primarySkillSlug: 'react',
       reinforcedSkillSlugs: ['react', 'express', 'mongodb', 'authentication', 'node-js', 'rest-api'],
       technologies: ['React', 'Node.js', 'Express', 'MongoDB', 'TypeScript'],
@@ -163,70 +123,125 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
       architectureOverview: 'Complete 3-tier enterprise architecture combining SPA frontend client, authenticated backend API server, and MongoDB persistence layer.',
       learningObjectives: ['Integrate complete full-stack web app', 'Deploy API and database to cloud', 'Write end-to-end integration tests'],
     },
+
+    // --- Data Analytics Projects ---
     {
-      title: 'Single Page App Dynamic Data Table & Pagination',
-      slug: 'spa-dynamic-data-table-pagination',
-      description: 'Build an ultra-fast client-side data grid supporting column sorting, multi-field filtering, debounced search, and pagination controls.',
-      difficulty: 'BEGINNER',
-      primarySkillSlug: 'react',
-      reinforcedSkillSlugs: ['react', 'javascript'],
-      technologies: ['React', 'TypeScript', 'Lucide Icons'],
-      estimatedHours: 5,
-      githubStarterUrl: 'https://github.com/skillpath-templates/react-datatable-starter',
-      architectureOverview: 'Optimized React functional table component using memoized selector hooks for fast client-side sorting and filtering.',
-      learningObjectives: ['Implement memoized sorting logic', 'Manage pagination state', 'Debounce user search inputs'],
+      title: 'E-Commerce Sales & Revenue Data Analysis',
+      slug: 'ecommerce-sales-revenue-data-analysis',
+      description: 'Clean raw transaction logs using Pandas, write SQL queries to identify top-performing customer cohorts, and present visual insight charts.',
+      difficulty: 'INTERMEDIATE',
+      careerSlug: 'data-analyst',
+      primarySkillSlug: 'pandas',
+      reinforcedSkillSlugs: ['pandas', 'python', 'sql', 'data-visualization'],
+      technologies: ['Python', 'Pandas', 'SQL', 'Matplotlib', 'Jupyter'],
+      estimatedHours: 10,
+      githubStarterUrl: 'https://github.com/skillpath-templates/sales-data-starter',
+      architectureOverview: 'Jupyter notebook processing CSV logs, executing SQL window functions, and exporting executive charts.',
+      learningObjectives: ['Wrangle messy datasets with Pandas', 'Write SQL cohort analysis queries', 'Build clear chart stories'],
     },
     {
-      title: 'Express File Upload & Storage Processing Service',
-      slug: 'express-file-upload-storage-service',
-      description: 'Create a Node.js backend microservice for multipart/form-data image uploads, mime-type validation, thumbnail generation, and cloud storage.',
-      difficulty: 'INTERMEDIATE',
-      primarySkillSlug: 'express',
-      reinforcedSkillSlugs: ['express', 'node-js', 'rest-api'],
-      technologies: ['Node.js', 'Express', 'Multer', 'Sharp'],
+      title: 'Student Performance & Academic Analytics Dashboard',
+      slug: 'student-performance-analytics-dashboard',
+      description: 'Design an interactive Power BI dashboard tracking student course completion rates, assessment scores, and drop-out risk factors.',
+      difficulty: 'BEGINNER',
+      careerSlug: 'data-analyst',
+      primarySkillSlug: 'data-visualization',
+      reinforcedSkillSlugs: ['data-visualization', 'excel', 'power-bi', 'statistics'],
+      technologies: ['Power BI', 'Excel', 'DAX', 'Statistics'],
       estimatedHours: 8,
-      githubStarterUrl: 'https://github.com/skillpath-templates/express-upload-starter',
-      architectureOverview: 'Stream-based file processing backend checking file extensions, enforcing file size limits, and storing metadata in database.',
-      learningObjectives: ['Handle multipart form requests', 'Validate binary file magic numbers', 'Process stream data efficiently'],
+      githubStarterUrl: 'https://github.com/skillpath-templates/student-analytics-starter',
+      architectureOverview: 'Power BI data model consuming Excel tables, defining DAX measures, and rendering interactive visual slicers.',
+      learningObjectives: ['Build relational data models in Power BI', 'Formulate DAX metrics', 'Design user-friendly KPI cards'],
     },
+
+    // --- AI / ML Projects ---
     {
-      title: 'MongoDB Multi-Tenant Organization Schema System',
-      slug: 'mongodb-multitenant-org-schema-system',
-      description: 'Design a multi-tenant SaaS MongoDB database enforcing tenant data isolation, sub-document validations, and scoped query middlewares.',
-      difficulty: 'ADVANCED',
-      primarySkillSlug: 'mongodb',
-      reinforcedSkillSlugs: ['mongodb', 'express', 'authentication'],
-      technologies: ['MongoDB', 'Mongoose', 'TypeScript'],
-      estimatedHours: 12,
-      githubStarterUrl: 'https://github.com/skillpath-templates/mongo-multitenant-starter',
-      architectureOverview: 'Mongoose plugin architecture injecting tenantId scoping filters across all find, update, and delete database hooks.',
-      learningObjectives: ['Build Mongoose middleware plugins', 'Enforce multi-tenant data isolation', 'Index composite keys'],
-    },
-    {
-      title: 'OAuth2 Social Identity Integration Server',
-      slug: 'oauth2-social-identity-integration-server',
-      description: 'Add Google & GitHub OAuth2 login integration to an existing Express identity service, storing user profiles and linking credentials.',
+      title: 'Predictive Housing Price Machine Learning Model',
+      slug: 'predictive-housing-price-ml-model',
+      description: 'Build and evaluate linear regression and random forest models predicting property market values from demographic and geometric features.',
       difficulty: 'INTERMEDIATE',
-      primarySkillSlug: 'authentication',
-      reinforcedSkillSlugs: ['authentication', 'express', 'rest-api'],
-      technologies: ['Node.js', 'Express', 'Passport.js', 'OAuth2'],
-      estimatedHours: 9,
-      githubStarterUrl: 'https://github.com/skillpath-templates/oauth-social-starter',
-      architectureOverview: 'Passport.js OAuth2 strategy implementation exchanging authorization codes for user profile claims and issuing internal JWT tokens.',
-      learningObjectives: ['Understand OAuth2 authorization flow', 'Handle social callback endpoints', 'Link third-party accounts'],
+      careerSlug: 'ai-ml-engineer',
+      primarySkillSlug: 'machine-learning',
+      reinforcedSkillSlugs: ['machine-learning', 'python', 'pandas', 'numpy', 'model-evaluation'],
+      technologies: ['Python', 'Scikit-Learn', 'Pandas', 'NumPy'],
+      estimatedHours: 12,
+      githubStarterUrl: 'https://github.com/skillpath-templates/housing-ml-starter',
+      architectureOverview: 'Scikit-Learn Pipeline combining StandardScalar feature transformers, Random Forest Regressors, and RMSE evaluation.',
+      learningObjectives: ['Engineer tabular predictive features', 'Tune model hyperparameters', 'Evaluate regression metrics'],
     },
     {
-      title: 'Interactive CLI Developer Environment Diagnostic Tool',
-      slug: 'interactive-cli-dev-env-diagnostic-tool',
-      description: 'Develop an interactive terminal CLI checking installed node version, git configuration, open port availability, and database connectivity.',
-      difficulty: 'BEGINNER',
-      primarySkillSlug: 'node-js',
-      reinforcedSkillSlugs: ['node-js', 'javascript'],
-      technologies: ['Node.js', 'Commander.js', 'Inquirer.js', 'Chalk'],
-      estimatedHours: 4,
-      githubStarterUrl: 'https://github.com/skillpath-templates/cli-diagnostic-starter',
-      architectureOverview: 'Standalone executable Node.js script using async child processes to run system checks and render styled terminal summaries.',
-      learningObjectives: ['Build command-line Node.js utilities', 'Execute shell sub-processes asynchronously', 'Format terminal output'],
+      title: 'Deep Learning Neural Network Classifier',
+      slug: 'deep-learning-neural-network-classifier',
+      description: 'Construct a multi-layer deep neural network using Python and NumPy matrix operations to classify multi-class vector datasets.',
+      difficulty: 'ADVANCED',
+      careerSlug: 'ai-ml-engineer',
+      primarySkillSlug: 'deep-learning',
+      reinforcedSkillSlugs: ['deep-learning', 'mathematics', 'numpy', 'data-preprocessing'],
+      technologies: ['Python', 'NumPy', 'Matplotlib'],
+      estimatedHours: 16,
+      githubStarterUrl: 'https://github.com/skillpath-templates/nn-from-scratch-starter',
+      architectureOverview: 'From-scratch neural network implementation featuring forward propagation, cross-entropy loss, and backpropagation gradients.',
+      learningObjectives: ['Implement matrix calculus in NumPy', 'Understand backpropagation gradients', 'Prevent exploding gradients'],
+    },
+
+    // --- Cybersecurity Projects ---
+    {
+      title: 'Web Application Vulnerability Audit Lab',
+      slug: 'web-application-vulnerability-audit-lab',
+      description: 'Conduct a security assessment of a vulnerable web application, identifying OWASP Top 10 flaws including SQL Injection and XSS.',
+      difficulty: 'INTERMEDIATE',
+      careerSlug: 'cybersecurity-analyst',
+      primarySkillSlug: 'web-security',
+      reinforcedSkillSlugs: ['web-security', 'security-fundamentals', 'linux', 'networking'],
+      technologies: ['Burp Suite', 'OWASP ZAP', 'Linux', 'Web Security'],
+      estimatedHours: 10,
+      githubStarterUrl: 'https://github.com/skillpath-templates/web-audit-starter',
+      architectureOverview: 'Controlled security sandbox testing HTTP proxy requests, payload injections, and remediation report generation.',
+      learningObjectives: ['Identify web application vulnerabilities', 'Demonstrate proof-of-concept exploits', 'Author remediation reports'],
+    },
+    {
+      title: 'Network Traffic & Security Packet Scanner',
+      slug: 'network-traffic-security-packet-scanner',
+      description: 'Analyze PCAP network captures using security tools, detect suspicious port scans, and isolate malicious IP traffic.',
+      difficulty: 'INTERMEDIATE',
+      careerSlug: 'cybersecurity-analyst',
+      primarySkillSlug: 'security-tools',
+      reinforcedSkillSlugs: ['security-tools', 'networking', 'linux'],
+      technologies: ['Wireshark', 'Nmap', 'Linux', 'Bash'],
+      estimatedHours: 8,
+      githubStarterUrl: 'https://github.com/skillpath-templates/pcap-analysis-starter',
+      architectureOverview: 'Packet analysis laboratory inspecting TCP handshakes, DNS queries, and TLS certificate exchanges.',
+      learningObjectives: ['Parse PCAP packet traces', 'Identify network scan footprints', 'Audit network protocol headers'],
+    },
+
+    // --- Cloud & DevOps Projects ---
+    {
+      title: 'Containerized Microservices Deployment Pipeline',
+      slug: 'containerized-microservices-deployment-pipeline',
+      description: 'Package a Node.js web app and MongoDB database into Docker containers, orchestrate them with Docker Compose, and configure health checks.',
+      difficulty: 'INTERMEDIATE',
+      careerSlug: 'cloud-devops-engineer',
+      primarySkillSlug: 'docker',
+      reinforcedSkillSlugs: ['docker', 'linux', 'networking', 'cloud-fundamentals'],
+      technologies: ['Docker', 'Docker Compose', 'Linux', 'Node.js'],
+      estimatedHours: 10,
+      githubStarterUrl: 'https://github.com/skillpath-templates/docker-compose-starter',
+      architectureOverview: 'Multi-container Docker architecture using bridge network isolation, named volume persistence, and environment secrets.',
+      learningObjectives: ['Author multi-stage Dockerfiles', 'Orchestrate services with Docker Compose', 'Configure container volumes'],
+    },
+    {
+      title: 'Automated GitHub Actions CI/CD Cloud Pipeline',
+      slug: 'automated-github-actions-cicd-cloud-pipeline',
+      description: 'Build an automated continuous delivery pipeline running automated unit tests, building Docker images, and deploying to cloud infrastructure.',
+      difficulty: 'ADVANCED',
+      careerSlug: 'cloud-devops-engineer',
+      primarySkillSlug: 'ci-cd',
+      reinforcedSkillSlugs: ['ci-cd', 'git', 'aws', 'infrastructure-deployment'],
+      technologies: ['GitHub Actions', 'Docker', 'AWS EC2', 'Bash'],
+      estimatedHours: 14,
+      githubStarterUrl: 'https://github.com/skillpath-templates/cicd-cloud-starter',
+      architectureOverview: 'GitHub Actions workflow triggering on pull requests, executing linting/testing jobs, and securely deploying over SSH.',
+      learningObjectives: ['Build GitHub Actions workflow YAMLs', 'Manage deployment secrets safely', 'Automate cloud deployments'],
     },
   ];
 
@@ -238,6 +253,8 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
       console.warn(`[Seed] Warning: Primary skill slug '${item.primarySkillSlug}' not found for project '${item.title}'`);
       continue;
     }
+
+    const careerDoc = careerMap.get(item.careerSlug);
 
     const reinforcedSkillIds = item.reinforcedSkillSlugs
       .map((slug) => skillMap.get(slug)?._id)
@@ -251,7 +268,7 @@ export const seedProjectData = async (): Promise<ProjectSeedResult> => {
           slug: item.slug,
           description: item.description,
           difficulty: item.difficulty,
-          careerId: fullStackCareer?._id,
+          careerId: careerDoc?._id,
           skillId: primarySkillDoc._id,
           skillsReinforced: reinforcedSkillIds,
           technologies: item.technologies,
@@ -285,3 +302,4 @@ if (typeof require !== 'undefined' && require.main === module) {
       process.exit(1);
     });
 }
+

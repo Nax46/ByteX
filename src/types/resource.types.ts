@@ -1,4 +1,4 @@
-export type ResourceType = 'ARTICLE' | 'VIDEO' | 'COURSE' | 'DOCUMENTATION' | 'BOOK'
+export type ResourceType = 'ARTICLE' | 'VIDEO' | 'COURSE' | 'DOCUMENTATION' | 'BOOK' | 'PRACTICE' | 'PROJECT'
 
 export type ResourceLevel = 'Beginner' | 'Intermediate' | 'Advanced'
 
@@ -15,3 +15,13 @@ export interface LearningResource {
   isCompleted?: boolean
   rating?: number
 }
+
+export interface ResourceRecommendation {
+  resource: LearningResource
+  relevanceScore: number
+  recommendationReason: string
+  skillName: string
+  targetSkillGap: number
+  priorityScore: number
+}
+

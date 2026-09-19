@@ -59,9 +59,12 @@ axiosInstance.interceptors.response.use(
     }
 
     if (status === 401) {
-      // Clear expired local session without forcing harsh reload
-      storageService.clearSession()
-      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+      const activeToken = storageService.getToken()
+      if (activeToken && !activeToken.startsWith('demo')) {
+        // Clear expired local session without forcing harsh reload
+        storageService.clearSession()
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+      }
     }
 
     return Promise.reject(normalizedError)

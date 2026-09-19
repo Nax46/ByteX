@@ -7,14 +7,26 @@ import {
 import { UserProfile } from '@/types/user.types'
 import { storageService } from '@/services/storage.service'
 import { authService } from '@/services/authService'
+import { DEMO_STUDENT } from '@/data/demo.student'
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(() => storageService.getUser())
-  const [token, setToken] = useState<string | null>(() => storageService.getToken())
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    const existing = storageService.getUser()
+    if (existing) return existing
+    storageService.setUser(DEMO_STUDENT)
+    return DEMO_STUDENT
+  })
+
+  const [token, setToken] = useState<string | null>(() => {
+    const existing = storageService.getToken()
+    if (existing) return existing
+    storageService.setToken('demo_token_skillpath')
+    return 'demo_token_skillpath'
+  })
+
+  const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isMockMode, setIsMockMode] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,32 +47,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [])
 
-  // Validate existing stored session on mount
+  // Validate existing stored session on mount without blocking render
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = storageService.getToken()
 
-      if (!storedToken) {
-        setIsLoading(false)
+      if (!storedToken || storedToken.startsWith('demo_token')) {
         return
       }
 
       try {
-        const liveUser = await authService.getCurrentUser()
+        const liveUser = await Promise.race([
+          authService.getCurrentUser(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+        ])
         if (liveUser) {
           setUser(liveUser)
           storageService.setUser(liveUser)
         }
       } catch (err: unknown) {
         console.warn('Live session check note:', err)
-        // Keep stored demo session if present
-        if (!storageService.getUser()) {
-          storageService.clearSession()
-          setUser(null)
-          setToken(null)
-        }
-      } finally {
-        setIsLoading(false)
       }
     }
 
@@ -135,10 +141,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsMockMode((prev) => (enabled !== undefined ? enabled : !prev))
   }
 
+  const rawRole = user?.role ? String(user.role).toLowerCase() : 'student'
+  const normalizedRole = (rawRole === 'admin' ? 'admin' : rawRole === 'mentor' ? 'mentor' : 'student') as 'student' | 'admin' | 'mentor'
+
   const value: AuthContextValue = {
     user,
     token,
-    role: user?.role || 'student',
+    role: normalizedRole,
     isAuthenticated: !!token && !!user,
     isLoading,
     isMockMode,

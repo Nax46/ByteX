@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { getSkillGapPriorityHandler } from '../controllers/intelligence.controller.js';
 import {
+  getCareersHandler,
+  getCareerDetailsHandler,
+  getCareerSkillsHandler,
+  getStudentCareerReadinessHandler,
+} from '../controllers/career.controller.js';
+import {
   getRoadmapProgressHandler,
   startModuleProgressHandler,
   updateModuleProgressHandler,
@@ -21,8 +27,16 @@ import { getCurrentRoadmapHandler, generateRoadmapHandler } from '../controllers
 
 const router = Router();
 
-// Protect intelligence endpoints with authentication
+// Public / Unauthenticated Career Catalog Endpoints
+router.get('/careers', getCareersHandler);
+router.get('/careers/:careerId', getCareerDetailsHandler);
+router.get('/careers/:careerId/skills', getCareerSkillsHandler);
+
+// Protect subsequent intelligence endpoints with authentication
 router.use(requireAuth);
+
+// Authenticated Student Career Readiness Endpoint
+router.get('/careers/:careerId/readiness', getStudentCareerReadinessHandler);
 
 // GET /api/intelligence/skill-gap-priority (or /api/v1/intelligence/skill-gap-priority)
 router.get('/skill-gap-priority', getSkillGapPriorityHandler);
@@ -51,6 +65,7 @@ router.post('/reassessment/:assessmentId/submit', submitReassessmentHandler);
 router.post('/roadmap/adaptive', generateAdaptiveRoadmapHandler);
 
 export default router;
+
 
 
 

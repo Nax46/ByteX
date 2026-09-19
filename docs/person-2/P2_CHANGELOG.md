@@ -62,6 +62,15 @@ This document records key architectural decisions, domain schema updates, busine
 - **Integration Impact**: Exposed queryable pure services for Person 1 Dashboard and future Roadmap Engine.
 - **Person 1 Coordination Status**: AGREED
 
+### [2026-09-19] - Task P2-DB-CAREER-001: Database-Driven Career Intelligence Layer
+- **Module**: Career Catalog, Skill Mappings, Learning Resources, Portfolio Projects & Career APIs
+- **Change**: Expanded foundation catalog to 7 core careers (`Full Stack Developer`, `Frontend Developer`, `Backend Developer`, `Data Analyst`, `AI/ML Engineer`, `Cybersecurity Analyst`, `Cloud/DevOps Engineer`), 38 canonical skills, 59 CareerSkill requirements with acyclic DAG prerequisites, 7 diagnostic assessments, 56 questions across 22 skills, 35 curated resources with real URLs, and 14 portfolio projects. Added backend `career.service.ts` and `career.controller.ts` providing `/api/v1/intelligence/careers`, `/api/v1/intelligence/careers/:careerId`, `/api/v1/intelligence/careers/:careerId/skills`, `/api/v1/intelligence/careers/:careerId/readiness`. Connected frontend `CareersPage.tsx` to `careers.api.ts` for live database loading. Added 7 integration tests in `careerIntelligence.test.ts`.
+- **Reason**: Enable complete, database-driven student career exploration, skill gaps, roadmap, resources, projects, and readiness tracking 100% without Gemini AI availability.
+- **Files Modified**: `backend/src/seed/foundationSeed.ts`, `backend/src/seed/assessmentSeed.ts`, `backend/src/seed/resourceSeed.ts`, `backend/src/seed/projectSeed.ts`, `backend/src/services/career.service.ts`, `backend/src/controllers/career.controller.ts`, `backend/src/routes/intelligence.routes.ts`, `backend/src/types/intelligence.ts`, `backend/src/schemas/intelligenceValidation.ts`, `src/api/endpoints/careers.api.ts`, `src/pages/career/CareersPage.tsx`, `backend/tests/careerIntelligence.test.ts`, `backend/tests/intelligenceFoundation.test.ts`, `backend/tests/assessmentDomain.test.ts`
+- **Integration Impact**: Frontend and API clients now consume live MongoDB career data directly via `/api/v1/intelligence/careers` endpoints without static hardcoding or AI requirements.
+- **Person 1 Coordination Status**: AGREED
+
+
 
 
 
