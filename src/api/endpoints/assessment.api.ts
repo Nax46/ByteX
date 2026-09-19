@@ -7,9 +7,12 @@ import {
   AssessmentStartResponse,
   AssessmentHistoryResponse,
   ReassessmentSummaryResponse,
+  ReassessmentSubmitResponse,
+  ReassessmentSubmissionAnswer,
 } from '@/types/assessment.types'
 import { DEMO_ASSESSMENT_QUESTIONS, DEMO_ASSESSMENT_RESULT } from '@/data/demo.assessment'
 import { safeStorage } from '@/utils/storage'
+import { reassessmentApi } from './reassessment.api'
 
 const LATEST_RESULT_KEY = 'skillpath_latest_assessment_result'
 
@@ -228,18 +231,14 @@ export const assessmentApi = {
     }
   },
 
-  getReassessmentSummary: async (): Promise<ReassessmentSummaryResponse> => {
-    const res = await apiClient.get<ReassessmentSummaryResponse>('/v1/intelligence/reassessment/summary')
-    return res.data
+  getReassessmentSummary: async (assessmentId?: string): Promise<ReassessmentSummaryResponse> => {
+    return reassessmentApi.getSummary(assessmentId)
   },
 
   submitReassessment: async (
     assessmentId: string,
-    answers: Array<{ questionId: string; selectedOptionId: string; timeTakenSeconds?: number }>
-  ): Promise<{ attempt: unknown }> => {
-    const res = await apiClient.post<{ attempt: unknown }>(`/v1/intelligence/reassessment/${assessmentId}/submit`, {
-      answers,
-    })
-    return res.data
+    answers: ReassessmentSubmissionAnswer[]
+  ): Promise<ReassessmentSubmitResponse> => {
+    return reassessmentApi.submitAttempt(assessmentId, answers)
   },
 }

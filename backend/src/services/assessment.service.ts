@@ -5,6 +5,7 @@ import {
   AssessmentStatus,
   IAssessmentAttempt,
 } from '../models/AssessmentAttempt';
+import { StudentProfile } from '../models/StudentProfile';
 import { QuestionModel } from '../models/Question';
 import { StudentFacingQuestionDTO } from '../types/assessment';
 
@@ -168,8 +169,17 @@ export const getAttemptById = async (
     throw new AssessmentError('Assessment attempt not found', 404);
   }
 
+  const userObjectId = new Types.ObjectId(userId);
+  const profileDoc = await StudentProfile.findOne({ userId: userObjectId }).select('_id').lean();
+
+  const isOwner =
+    (attempt.userId && attempt.userId.toString() === userId) ||
+    (profileDoc?._id &&
+      attempt.studentProfileId &&
+      attempt.studentProfileId.toString() === profileDoc._id.toString());
+
   // Verify ownership: users can only view their own attempts
-  if (!attempt.userId || attempt.userId.toString() !== userId) {
+  if (!isOwner) {
     throw new AssessmentError('Forbidden: You do not have permission to access this assessment attempt', 403);
   }
 
@@ -193,14 +203,18 @@ export const getAssessmentHistory = async (
   const skip = (validPage - 1) * validLimit;
 
   const userObjectId = new Types.ObjectId(userId);
+  const profileDoc = await StudentProfile.findOne({ userId: userObjectId }).select('_id').lean();
+  const query = profileDoc?._id
+    ? { $or: [{ userId: userObjectId }, { studentProfileId: profileDoc._id }] }
+    : { userId: userObjectId };
 
   const [attempts, total] = await Promise.all([
-    AssessmentAttempt.find({ userId: userObjectId })
+    AssessmentAttempt.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(validLimit)
       .lean(),
-    AssessmentAttempt.countDocuments({ userId: userObjectId }),
+    AssessmentAttempt.countDocuments(query),
   ]);
 
   return {

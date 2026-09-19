@@ -51,11 +51,18 @@ export const getDashboardSummary = async (userId: string): Promise<DashboardSumm
 
   const userObjectId = new Types.ObjectId(userId);
 
-  // Parallel execution of lean queries utilizing existing indexes
-  const [profileDoc, latestAttemptDoc, activeAttemptDoc] = await Promise.all([
-    StudentProfile.findOne({ userId: userObjectId }).select('fullName targetCareer').lean(),
-    AssessmentAttempt.findOne({ userId: userObjectId }).sort({ createdAt: -1 }).lean(),
-    AssessmentAttempt.findOne({ userId: userObjectId, status: AssessmentStatus.IN_PROGRESS })
+  // Query profile first to retrieve studentProfileId for cross-engine attempt retrieval
+  const profileDoc = await StudentProfile.findOne({ userId: userObjectId })
+    .select('fullName targetCareer')
+    .lean();
+
+  const attemptQuery = profileDoc?._id
+    ? { $or: [{ userId: userObjectId }, { studentProfileId: profileDoc._id }] }
+    : { userId: userObjectId };
+
+  const [latestAttemptDoc, activeAttemptDoc] = await Promise.all([
+    AssessmentAttempt.findOne(attemptQuery).sort({ createdAt: -1 }).lean(),
+    AssessmentAttempt.findOne({ ...attemptQuery, status: AssessmentStatus.IN_PROGRESS })
       .select('_id')
       .lean(),
   ]);

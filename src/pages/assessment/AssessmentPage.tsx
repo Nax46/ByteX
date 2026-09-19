@@ -10,11 +10,14 @@ import { ErrorState } from '@/components/common/ErrorState'
 import { Modal } from '@/components/ui/Modal'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import { assessmentApi } from '@/api/endpoints/assessment.api'
+import { reassessmentApi } from '@/api/endpoints/reassessment.api'
+import { roadmapApi } from '@/api/endpoints/roadmap.api'
 import {
   AssessmentQuestion,
   AssessmentResult,
   SafeAssessmentAttempt,
   AssessmentHistoryResponse,
+  IReassessmentSummary,
 } from '@/types/assessment.types'
 import { DEMO_ASSESSMENT_QUESTIONS } from '@/data/demo.assessment'
 import { ROUTES } from '@/constants/routes'
@@ -37,6 +40,10 @@ import {
   Maximize2,
   Minimize2,
   AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  RefreshCw,
 } from 'lucide-react'
 
 const SECONDS_PER_QUESTION = 45
@@ -63,6 +70,11 @@ export const AssessmentPage: React.FC = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submissionResult, setSubmissionResult] = useState<AssessmentResult | null>(null)
   const [startTime] = useState<number>(() => Date.now())
+
+  // Reassessment & Intelligence state (Person 2 Integration)
+  const [reassessmentSummary, setReassessmentSummary] = useState<IReassessmentSummary | null>(null)
+  const [isAdaptingRoadmap, setIsAdaptingRoadmap] = useState<boolean>(false)
+  const [adaptiveFeedback, setAdaptiveFeedback] = useState<string | null>(null)
 
   // History section state (Task 13)
   const [history, setHistory] = useState<AssessmentHistoryResponse | null>(null)
@@ -109,6 +121,14 @@ export const AssessmentPage: React.FC = () => {
             setAttempt(fetchedAttempt)
             if (fetchedAttempt.status === 'SUBMITTED' || fetchedAttempt.status === 'COMPLETED') {
               setIsCompleted(true)
+              try {
+                const sumRes = await reassessmentApi.getSummary()
+                if (isMounted() && sumRes?.summary) {
+                  setReassessmentSummary(sumRes.summary)
+                }
+              } catch {
+                // Ignore if summary not available
+              }
               const latestResult = await assessmentApi.getLatestResult()
               if (isMounted()) setSubmissionResult(latestResult)
             } else {
@@ -124,6 +144,14 @@ export const AssessmentPage: React.FC = () => {
             setIsExisting(activeFound)
             if (startedAttempt.status === 'SUBMITTED' || startedAttempt.status === 'COMPLETED') {
               setIsCompleted(true)
+              try {
+                const sumRes = await reassessmentApi.getSummary()
+                if (isMounted() && sumRes?.summary) {
+                  setReassessmentSummary(sumRes.summary)
+                }
+              } catch {
+                // Ignore if summary not available
+              }
               const latestResult = await assessmentApi.getLatestResult()
               if (isMounted()) setSubmissionResult(latestResult)
             } else {
@@ -162,52 +190,9 @@ export const AssessmentPage: React.FC = () => {
     initializeAssessment(() => mounted)
   }
 
-  // Force Submission on Max Violations
-  const handleForceSubmit = useCallback(
-    async (violations: number) => {
-      if (isSubmittingRef.current) return
-      setIsSubmitting(true)
-      setSubmitError(null)
-
-      const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000))
-      const mappedAnswers = Object.entries(answers).map(([questionId, selectedOptionId]) => ({
-        questionId,
-        selectedOptionId,
-      }))
-
-      try {
-        if (attempt?.id) {
-          const submittedAttempt = await assessmentApi.submitAssessment(attempt.id, {
-            answers: mappedAnswers,
-          })
-          setAttempt(submittedAttempt)
-        }
-
-        const res = await assessmentApi.submitAssessment({
-          assessmentId: attempt?.id || 'diag_assessment',
-          answers,
-          timeSpentSeconds,
-          tabSwitches: violations,
-          violations,
-        })
-        setSubmissionResult(res as AssessmentResult)
-        setIsCompleted(true)
-      } catch (err) {
-        console.error('Failed to force submit assessment:', err)
-      } finally {
-        setIsSubmitting(false)
-        setShowViolationModal(false)
-        if (document.fullscreenElement) {
-          document.exitFullscreen?.().catch(() => {})
-        }
-      }
-    },
-    [answers, attempt, startTime]
-  )
-
-  // Normal Submission
-  const handleFinalSubmit = useCallback(
-    async (currentAnswers: Record<string, string>) => {
+  // Core Submission: Integrates Person 2 Reassessment Engine with Person 1 Attempt tracking
+  const submitEvaluation = useCallback(
+    async (currentAnswers: Record<string, string>, violations: number) => {
       if (isSubmittingRef.current) return
       setIsSubmitting(true)
       setSubmitError(null)
@@ -216,22 +201,49 @@ export const AssessmentPage: React.FC = () => {
       const mappedAnswers = Object.entries(currentAnswers).map(([questionId, selectedOptionId]) => ({
         questionId,
         selectedOptionId,
+        timeTakenSeconds: Math.round(timeSpentSeconds / Math.max(1, Object.keys(currentAnswers).length)),
       }))
 
+      // Determine target assessmentId from loaded questions
+      const targetAssessmentId =
+        questions.find((q) => q.assessmentId)?.assessmentId ||
+        questions[0]?.assessmentId ||
+        attempt?.id
+
       try {
-        if (attempt?.id) {
-          const submittedAttempt = await assessmentApi.submitAssessment(attempt.id, {
-            answers: mappedAnswers,
-          })
-          setAttempt(submittedAttempt)
+        // 1. Submit to Person 2 Reassessment Engine (deterministic scoring & evaluation)
+        if (targetAssessmentId && mappedAnswers.length > 0) {
+          try {
+            await reassessmentApi.submitAttempt(targetAssessmentId, mappedAnswers)
+            // Fetch the updated comparative summary from Person 2 engine
+            const summaryRes = await reassessmentApi.getSummary(targetAssessmentId)
+            if (summaryRes?.summary) {
+              setReassessmentSummary(summaryRes.summary)
+            }
+          } catch (reassessErr) {
+            console.warn('Reassessment evaluation warning:', reassessErr)
+          }
         }
 
+        // 2. Submit active Person 1 attempt to transition it to SUBMITTED
+        if (attempt?.id) {
+          try {
+            const submittedAttempt = await assessmentApi.submitAssessment(attempt.id, {
+              answers: mappedAnswers,
+            })
+            setAttempt(submittedAttempt)
+          } catch (attErr) {
+            console.warn('Attempt completion note:', attErr)
+          }
+        }
+
+        // 3. Fallback/compatibility evaluation
         const res = await assessmentApi.submitAssessment({
-          assessmentId: attempt?.id || 'diag_assessment',
+          assessmentId: targetAssessmentId || attempt?.id || 'diag_assessment',
           answers: currentAnswers,
           timeSpentSeconds,
-          tabSwitches: violationsCountRef.current,
-          violations: violationsCountRef.current,
+          tabSwitches: violations,
+          violations,
         })
         setSubmissionResult(res as AssessmentResult)
         setIsCompleted(true)
@@ -244,13 +256,50 @@ export const AssessmentPage: React.FC = () => {
         console.error('Assessment submission error:', err)
       } finally {
         setIsSubmitting(false)
+        setShowViolationModal(false)
         if (document.fullscreenElement) {
           document.exitFullscreen?.().catch(() => {})
         }
       }
     },
-    [attempt, startTime]
+    [attempt, questions, startTime]
   )
+
+  // Force Submission on Max Violations
+  const handleForceSubmit = useCallback(
+    async (violations: number) => {
+      await submitEvaluation(answers, violations)
+    },
+    [answers, submitEvaluation]
+  )
+
+  // Normal Submission
+  const handleFinalSubmit = useCallback(
+    async (currentAnswers: Record<string, string>) => {
+      await submitEvaluation(currentAnswers, violationsCountRef.current)
+    },
+    [submitEvaluation]
+  )
+
+  // Trigger Adaptive Roadmap calibration after reassessment
+  const handleAdaptRoadmap = async () => {
+    setIsAdaptingRoadmap(true)
+    setAdaptiveFeedback(null)
+    try {
+      const res = await roadmapApi.generateAdaptiveRoadmap(true)
+      setAdaptiveFeedback(
+        `Adaptive roadmap V${res.roadmap?.version || 2} successfully calibrated with your newly demonstrated skills!`
+      )
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Failed to adapt roadmap. Please ensure target career is configured.'
+      setAdaptiveFeedback(msg)
+    } finally {
+      setIsAdaptingRoadmap(false)
+    }
+  }
 
   // Next Question or Submit
   const handleNext = useCallback(async () => {
@@ -437,10 +486,12 @@ export const AssessmentPage: React.FC = () => {
     setIsLoading(true)
     setError(null)
     setSubmitError(null)
+    setAdaptiveFeedback(null)
     setHasStarted(false)
     setCurrentIdx(0)
     setAnswers({})
     setSubmissionResult(null)
+    setReassessmentSummary(null)
     setIsCompleted(false)
     setViolationsCount(0)
     setShowViolationModal(false)
@@ -844,7 +895,7 @@ export const AssessmentPage: React.FC = () => {
         </Card>
       )}
 
-      {/* 3. Completed State with Real Attempt & Diagnostic Evaluation Results */}
+      {/* 3. Completed State with Real Reassessment & Intelligence Evaluation Results */}
       {(isCompleted || submissionResult) && (
         <Card className="p-8 sm:p-12 text-center bg-white border-[#E5E5DF] space-y-7 shadow-xl animate-fadeIn">
           <div className="relative inline-flex items-center justify-center">
@@ -858,16 +909,24 @@ export const AssessmentPage: React.FC = () => {
 
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#D8E8DE]/60 text-[#1F6B4F] text-xs font-bold uppercase tracking-wider">
-              <span>Assessment {attempt?.status || 'SUBMITTED'}</span>
+              <span>
+                {reassessmentSummary && reassessmentSummary.attemptCount >= 2
+                  ? `Reassessment #${reassessmentSummary.attemptCount}`
+                  : `Assessment ${attempt?.status || 'SUBMITTED'}`}
+              </span>
               {attempt?.id && (
                 <span className="font-mono opacity-70">#{attempt.id.slice(-6)}</span>
               )}
             </div>
             <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[#171918]">
-              Assessment Verified & Evaluated
+              {reassessmentSummary && reassessmentSummary.attemptCount >= 2
+                ? 'Reassessment Evaluated & Verified'
+                : 'Assessment Verified & Evaluated'}
             </h2>
             <p className="text-sm text-[#626763] max-w-md mx-auto leading-relaxed">
-              Your responses have been evaluated against verified curriculum answer keys. Your demonstrated score and skill gaps have been recorded in the database.
+              {reassessmentSummary && reassessmentSummary.attemptCount >= 2
+                ? 'Your reassessment responses have been scored by the deterministic evaluation engine. Skill deltas and competency trends have been recorded.'
+                : 'Your responses have been evaluated against verified curriculum answer keys. Your demonstrated score and skill gaps have been recorded in the database.'}
             </p>
             {attempt?.submittedAt && (
               <p className="text-xs text-[#626763]">
@@ -881,46 +940,166 @@ export const AssessmentPage: React.FC = () => {
             <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1">
               <span className="text-[11px] text-[#626763] font-medium">Demonstrated Score</span>
               <div className="font-heading text-2xl font-bold text-[#1F6B4F] flex items-baseline gap-1">
-                {submissionResult ? (
-                  <AnimatedCounter value={submissionResult.score} suffix="%" />
-                ) : (
-                  <span>Verified</span>
-                )}
+                <AnimatedCounter
+                  value={
+                    reassessmentSummary
+                      ? reassessmentSummary.overallCurrentScore
+                      : submissionResult?.score ?? 0
+                  }
+                  suffix="%"
+                />
               </div>
               <p className="text-[11px] text-[#1F6B4F] font-semibold">
-                {submissionResult
-                  ? `${submissionResult.correctQuestions} of ${submissionResult.totalQuestions} correct`
-                  : 'Recorded in database'}
+                {reassessmentSummary && reassessmentSummary.overallChange !== null ? (
+                  <span
+                    className={
+                      reassessmentSummary.overallChange > 0
+                        ? 'text-emerald-700'
+                        : reassessmentSummary.overallChange < 0
+                        ? 'text-rose-700'
+                        : 'text-[#626763]'
+                    }
+                  >
+                    {reassessmentSummary.overallChange >= 0 ? '+' : ''}
+                    {reassessmentSummary.overallChange}% vs prior attempt
+                  </span>
+                ) : submissionResult ? (
+                  `${submissionResult.correctQuestions} of ${submissionResult.totalQuestions} correct`
+                ) : (
+                  'Recorded in database'
+                )}
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1">
-              <span className="text-[11px] text-[#626763] font-medium">Proctoring Status</span>
+              <span className="text-[11px] text-[#626763] font-medium">Evaluation Trend</span>
               <div className="font-heading text-sm font-bold pt-1">
-                {submissionResult?.integrityStatus === 'VERIFIED' || violationsCount === 0 ? (
+                {reassessmentSummary && reassessmentSummary.attemptCount >= 2 ? (
+                  reassessmentSummary.overallChange !== null && reassessmentSummary.overallChange > 0 ? (
+                    <span className="text-emerald-700 flex items-center gap-1">
+                      <TrendingUp className="w-3.5 h-3.5" /> Improved
+                    </span>
+                  ) : reassessmentSummary.overallChange !== null && reassessmentSummary.overallChange < 0 ? (
+                    <span className="text-rose-700 flex items-center gap-1">
+                      <TrendingDown className="w-3.5 h-3.5" /> Declined
+                    </span>
+                  ) : (
+                    <span className="text-[#626763] flex items-center gap-1">
+                      <Minus className="w-3.5 h-3.5" /> Consistent
+                    </span>
+                  )
+                ) : submissionResult?.integrityStatus === 'VERIFIED' || violationsCount === 0 ? (
                   <span className="text-[#1F6B4F]">Verified Clean</span>
-                ) : submissionResult?.integrityStatus === 'WARNING_ISSUED' || violationsCount === 1 ? (
-                  <span className="text-amber-600">Warnings Noted</span>
                 ) : (
-                  <span className="text-red-600">Violation Strike</span>
+                  <span className="text-amber-600">Warnings Noted</span>
                 )}
               </div>
               <p className="text-[11px] text-[#626763]">
-                {submissionResult?.violations ?? violationsCount} violation strike(s)
+                {reassessmentSummary && reassessmentSummary.overallPreviousScore !== null
+                  ? `Prior Score: ${reassessmentSummary.overallPreviousScore}%`
+                  : `${submissionResult?.violations ?? violationsCount} violation strike(s)`}
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1">
-              <span className="text-[11px] text-[#626763] font-medium">Next Milestone</span>
+              <span className="text-[11px] text-[#626763] font-medium">Roadmap Engine</span>
               <div className="font-heading text-xs font-bold text-[#171918] truncate pt-1">
-                {submissionResult?.identifiedGaps?.[0] || 'Skill Gap Matrix'}
+                {reassessmentSummary && reassessmentSummary.attemptCount >= 2
+                  ? 'Adaptive Ready'
+                  : submissionResult?.identifiedGaps?.[0] || 'Skill Gap Matrix'}
               </div>
-              <p className="text-[11px] text-[#626763]">Roadmap updated</p>
+              <p className="text-[11px] text-[#626763]">
+                {reassessmentSummary && reassessmentSummary.attemptCount >= 2
+                  ? 'Can recalibrate path'
+                  : 'Roadmap updated'}
+              </p>
             </div>
           </div>
 
+          {/* Comparative Skill Delta Breakdown (Person 2 Intelligence) */}
+          {reassessmentSummary && reassessmentSummary.skillComparisons && reassessmentSummary.skillComparisons.length > 0 && (
+            <div className="max-w-xl mx-auto text-left space-y-3 pt-2">
+              <h4 className="font-heading text-xs font-bold uppercase tracking-wider text-[#1F6B4F]">
+                Demonstrated Skill Competency Comparison
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {reassessmentSummary.skillComparisons.map((sc, idx) => (
+                  <div
+                    key={sc.skillId || idx}
+                    className="p-3 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] flex items-center justify-between text-xs"
+                  >
+                    <div>
+                      <span className="font-semibold text-[#171918] block">
+                        {sc.skillName || sc.skillSlug || `Skill ${idx + 1}`}
+                      </span>
+                      <span className="text-[11px] text-[#626763]">
+                        {sc.previousScore !== null ? `Prior: ${sc.previousScore}% → ` : ''}
+                        Now: {sc.currentScore}%
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {sc.change !== null && sc.change !== 0 ? (
+                        <Badge
+                          variant={sc.change > 0 ? 'forest' : 'danger'}
+                          size="sm"
+                          className="font-mono text-[10px]"
+                        >
+                          {sc.change > 0 ? `+${sc.change}%` : `${sc.change}%`}
+                        </Badge>
+                      ) : null}
+
+                      <Badge
+                        variant={
+                          sc.trend === 'IMPROVED'
+                            ? 'forest'
+                            : sc.trend === 'DECLINED'
+                            ? 'danger'
+                            : 'outline'
+                        }
+                        size="sm"
+                        className="text-[10px]"
+                      >
+                        {sc.trend === 'NEW_EVIDENCE' ? 'NEW' : sc.trend}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Adaptive Roadmap Trigger Banner */}
+          <div className="max-w-xl mx-auto p-4 rounded-xl bg-[#D8E8DE]/40 border border-[#C2D8C9] text-left space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-[#1F6B4F] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#E7A84B]" />
+                  Recalibrate Learning Roadmap
+                </span>
+                <p className="text-[11px] text-[#626763]">
+                  Adapt your milestones and priority schedule using this latest assessment data.
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                isLoading={isAdaptingRoadmap}
+                onClick={handleAdaptRoadmap}
+                leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+              >
+                Adapt Roadmap
+              </Button>
+            </div>
+            {adaptiveFeedback && (
+              <p className="text-[11px] font-semibold text-[#1F6B4F] pt-1 border-t border-[#C2D8C9]/60">
+                ✓ {adaptiveFeedback}
+              </p>
+            )}
+          </div>
+
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Button
               variant="outline"
               size="md"
@@ -930,18 +1109,18 @@ export const AssessmentPage: React.FC = () => {
               Retake Assessment
             </Button>
 
-            {submissionResult && (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() =>
-                  navigate(ROUTES.ASSESSMENT_RESULTS, { state: { result: submissionResult } })
-                }
-                rightIcon={<ArrowRight className="w-4 h-4" />}
-              >
-                View Full Skill Report
-              </Button>
-            )}
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() =>
+                navigate(ROUTES.ASSESSMENT_RESULTS, {
+                  state: { result: submissionResult, summary: reassessmentSummary },
+                })
+              }
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+            >
+              View Full Skill Report
+            </Button>
 
             <Link to={ROUTES.SKILL_GAP}>
               <Button variant="outline" size="md" rightIcon={<ArrowRight className="w-4 h-4" />}>

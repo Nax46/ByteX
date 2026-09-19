@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import {
   getReassessmentSummary,
   createReassessmentAttempt,
@@ -69,6 +70,11 @@ export const submitReassessmentHandler = async (
     }
 
     const attempt = await createReassessmentAttempt(userId, assessmentId, answers);
+
+    if (attempt && !attempt.userId && Types.ObjectId.isValid(userId)) {
+      attempt.userId = new Types.ObjectId(userId);
+      await attempt.save();
+    }
 
     sendSuccess(res, { attempt }, 'Reassessment submitted and evaluated successfully', 201);
   } catch (error) {

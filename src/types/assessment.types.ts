@@ -42,6 +42,8 @@ export interface QuestionOptionType {
 export interface AssessmentQuestion {
   _id?: string
   id?: string
+  skillId?: string
+  assessmentId?: string
   text?: string
   question?: string
   type?: QuestionType
@@ -83,26 +85,67 @@ export interface AssessmentResult {
   integrityStatus?: 'VERIFIED' | 'WARNING_ISSUED' | 'TERMINATED_VIOLATION'
 }
 
+export type ScoreTrend = 'IMPROVED' | 'DECLINED' | 'UNCHANGED' | 'NEW_EVIDENCE'
+
+export interface ISkillScoreComparison {
+  skillId: string
+  skillName?: string
+  skillSlug?: string
+  previousScore: number | null
+  currentScore: number
+  change: number | null
+  trend: ScoreTrend
+}
+
+export interface IReassessmentSummary {
+  studentProfileId: string
+  latestAttemptId: string
+  previousAttemptId: string | null
+  latestCompletedAt: string
+  previousCompletedAt: string | null
+  skillComparisons: ISkillScoreComparison[]
+  overallPreviousScore: number | null
+  overallCurrentScore: number
+  overallChange: number | null
+  attemptCount: number
+}
+
 export interface ReassessmentSummaryResponse {
-  summary: {
-    studentProfileId: string
-    latestAttemptId: string
-    previousAttemptId: string | null
-    latestCompletedAt: string
-    previousCompletedAt: string | null
-    skillComparisons: Array<{
+  summary: IReassessmentSummary
+}
+
+export interface ReassessmentSubmissionAnswer {
+  questionId: string
+  selectedOptionId: string
+  timeTakenSeconds?: number
+}
+
+export interface ReassessmentSubmitResponse {
+  attempt: {
+    _id: string
+    id?: string
+    studentProfileId?: string
+    assessmentId?: string
+    status: string
+    totalEarnedPoints?: number
+    totalMaxPoints?: number
+    completedAt?: string
+    skillScores?: Array<{
       skillId: string
-      skillName?: string
-      skillSlug?: string
-      previousScore: number | null
-      currentScore: number
-      change: number | null
-      trend: 'IMPROVED' | 'DECLINED' | 'UNCHANGED' | 'NEW_EVIDENCE'
+      score: number
+      totalQuestions: number
+      correctCount: number
+      earnedPoints: number
+      maxPoints: number
     }>
-    overallPreviousScore: number | null
-    overallCurrentScore: number
-    overallChange: number | null
-    attemptCount: number
+    answers?: Array<{
+      questionId: string
+      selectedOptionId: string
+      isCorrect?: boolean
+      pointsEarned?: number
+      timeTakenSeconds?: number
+    }>
   }
 }
+
 
