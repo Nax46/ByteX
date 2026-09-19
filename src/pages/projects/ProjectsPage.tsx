@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -8,35 +8,46 @@ import { projectsApi } from '@/api/endpoints/projects.api'
 import { RecommendedProject } from '@/types/project.types'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
-import { Clock, ArrowRight, FolderGit2, Code } from 'lucide-react'
+import { Clock, ArrowRight, FolderGit2, Code, AlertCircle, ExternalLink, Check } from 'lucide-react'
 
 export const ProjectsPage: React.FC = () => {
   const { user } = useAuth()
   const targetCareer = user?.careerGoal || 'target career'
   const [projects, setProjects] = useState<RecommendedProject[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  useEffect(() => {
-    let isMounted = true
-    const loadProjects = async () => {
-      setIsLoading(true)
-      try {
-        const data = await projectsApi.getRecommendedProjects()
-        if (isMounted) {
-          setProjects(data || [])
-        }
-      } catch (err) {
-        console.error('Failed to load recommended projects:', err)
-      } finally {
-        if (isMounted) setIsLoading(false)
-      }
-    }
-
-    loadProjects()
-    return () => {
-      isMounted = false
+  const loadProjects = useCallback(async () => {
+    setIsLoading(true)
+    setErrorMsg(null)
+    try {
+      const data = await projectsApi.getRecommendedProjects()
+      setProjects(data || [])
+    } catch (err: unknown) {
+      console.error('Failed to load recommended projects:', err)
+      const message =
+        err instanceof Error ? err.message : 'Failed to load recommended practical projects from server.'
+      setErrorMsg(message)
+    } finally {
+      setIsLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    loadProjects()
+  }, [loadProjects])
+
+  const handleToggleProjectStatus = async (proj: RecommendedProject) => {
+    const nextStatus = proj.status === 'IN_PROGRESS' ? 'SUBMITTED' : 'IN_PROGRESS'
+    try {
+      await projectsApi.updateProjectStatus(proj.id, nextStatus)
+      setProjects((prev) =>
+        prev.map((p) => (p.id === proj.id ? { ...p, status: nextStatus } : p))
+      )
+    } catch (err) {
+      console.error('Failed to update project status:', err)
+    }
+  }
 
   if (isLoading) {
     return <LoadingState message="Fetching practical engineering projects..." minHeight="min-h-[350px]" />
@@ -52,6 +63,18 @@ export const ProjectsPage: React.FC = () => {
           { label: 'Projects' },
         ]}
       />
+
+      {errorMsg && (
+        <div className="p-4 rounded-xl bg-[#FDF2F2] border border-[#F8B4B4] text-xs font-semibold text-[#9B1C1C] flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-[#C81E1E] shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadProjects} className="text-xs h-7">
+            Retry
+          </Button>
+        </div>
+      )}
 
       {projects.length > 0 ? (
         <div className="space-y-4">
@@ -70,14 +93,33 @@ export const ProjectsPage: React.FC = () => {
                     >
                       {proj.difficulty}
                     </Badge>
+                    {proj.primarySkillName && (
+                      <Badge variant="outline" size="sm" className="text-[10px]">
+                        {proj.primarySkillName}
+                      </Badge>
+                    )}
+                    {proj.relevanceScore != null && (
+                      <Badge variant="outline" size="sm" className="text-[10px] text-[#1F6B4F] border-[#1F6B4F]/30 bg-[#1F6B4F]/5 font-mono">
+                        {Math.round(proj.relevanceScore)}% Match
+                      </Badge>
+                    )}
                     {proj.status === 'IN_PROGRESS' && (
                       <Badge variant="warning" size="sm">In Progress</Badge>
+                    )}
+                    {proj.status === 'SUBMITTED' && (
+                      <Badge variant="forest" size="sm">Completed</Badge>
                     )}
                   </div>
 
                   <p className="text-xs sm:text-sm text-[#626763] leading-relaxed max-w-2xl">
                     {proj.description}
                   </p>
+
+                  {proj.recommendationReason && (
+                    <p className="text-[11px] text-[#1F6B4F] font-medium italic">
+                      {proj.recommendationReason}
+                    </p>
+                  )}
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <span className="text-xs text-[#626763] font-medium">Reinforces:</span>
@@ -97,9 +139,33 @@ export const ProjectsPage: React.FC = () => {
                     <Clock className="w-3.5 h-3.5" />
                     ~{proj.estimatedHours} Hours
                   </span>
-                  <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
-                    {proj.status === 'IN_PROGRESS' ? 'Resume Project' : 'Start Project'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {proj.githubStarterUrl && (
+                      <a
+                        href={proj.githubStarterUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="focus-visible:outline-none"
+                      >
+                        <Button variant="outline" size="sm" rightIcon={<ExternalLink className="w-3.5 h-3.5" />}>
+                          Starter
+                        </Button>
+                      </a>
+                    )}
+                    <Button
+                      variant={proj.status === 'SUBMITTED' ? 'outline' : 'primary'}
+                      size="sm"
+                      onClick={() => handleToggleProjectStatus(proj)}
+                      rightIcon={proj.status === 'SUBMITTED' ? <Check className="w-3.5 h-3.5 text-[#1F6B4F]" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                      className={proj.status === 'SUBMITTED' ? 'text-xs text-[#1F6B4F] border-[#1F6B4F]/30 bg-[#1F6B4F]/5' : 'text-xs'}
+                    >
+                      {proj.status === 'SUBMITTED'
+                        ? 'Completed'
+                        : proj.status === 'IN_PROGRESS'
+                        ? 'Submit Project'
+                        : 'Start Project'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -112,6 +178,9 @@ export const ProjectsPage: React.FC = () => {
           <p className="text-xs text-[#626763] max-w-md mx-auto">
             Once you advance in your roadmap milestones, targeted hands-on projects reinforcing those skills will appear here.
           </p>
+          <Button variant="outline" size="sm" onClick={loadProjects}>
+            Refresh Recommendations
+          </Button>
         </Card>
       )}
     </div>
