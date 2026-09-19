@@ -54,5 +54,18 @@ The `CareerSkill` junction document defines how much of a given skill a career r
 
 ## 6. Items Marked `TO BE AGREED`
 
-1. **Career Readiness Weight Formula**: Exact mathematical formula combining weighted skill gaps into an overall career readiness index `TO BE AGREED`.
+1. **Career Readiness Weight Formula**: Exact mathematical formula combining weighted skill gaps into an overall career readiness index `TO BE AGREED`. Underlying skill coverage breakdown (`totalRequiredSkills`, `metSkillsCount`, `developingSkillsCount`, `needsWorkSkillsCount`) is exposed directly.
 2. **Prerequisite Enforcement Strictness**: Whether missing a prerequisite hard-blocks a roadmap step or simply increases priority weight `TO BE AGREED`.
+
+---
+
+## 7. Supported Hackathon Core Career Catalog
+
+1. **Full Stack Developer** (`full-stack-developer`): Web Development
+2. **Frontend Developer** (`frontend-developer`): Web Development
+3. **Backend Developer** (`backend-developer`): Web Development
+4. **Data Analyst** (`data-analyst`): Data & Analytics
+5. **AI/ML Engineer** (`ai-ml-engineer`): Artificial Intelligence
+6. **Cybersecurity Analyst** (`cybersecurity-analyst`): Cybersecurity
+7. **Cloud/DevOps Engineer** (`cloud-devops-engineer`): Cloud Infrastructure
+

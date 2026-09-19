@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
 import { Card } from '@/components/ui/Card'
@@ -12,96 +12,169 @@ import { useAuth } from '@/hooks/useAuth'
 import { profileApi } from '@/api/endpoints/profile.api'
 import { skillsApi } from '@/api/endpoints/skills.api'
 import { roadmapApi } from '@/api/endpoints/roadmap.api'
-import { UserStats } from '@/types/user.types'
+import { dashboardApi, DashboardSummaryResponse } from '@/api/endpoints/dashboard.api'
+import { opportunitiesApi } from '@/api/endpoints/opportunities.api'
+import { evidenceApi } from '@/api/endpoints/evidence.api'
+import { UserStats, UserProfile } from '@/types/user.types'
 import { Skill, SkillGap } from '@/types/skill.types'
 import { Roadmap } from '@/types/roadmap.types'
-import { ArrowRight, Clock, Target, Sparkles } from 'lucide-react'
+import { Opportunity } from '@/types/opportunity.types'
+import { SkillEvidenceItem } from '@/types/evidence.types'
 import { DEFAULT_CAREER_GOAL } from '@/data/demo.student'
+import {
+  ArrowRight,
+  Clock,
+  Target,
+  Sparkles,
+  Zap,
+  AlertTriangle,
+  Flag,
+  Dumbbell,
+  BadgeCheck,
+  Briefcase,
+  Bot,
+  RefreshCw,
+  Award,
+  BookOpen,
+  FolderGit2,
+  TrendingUp,
+} from 'lucide-react'
+
+// Import Dashboard widgets
+import TodayActionWidget from '@/components/dashboard/TodayActionWidget'
+import CareerMissionCard from '@/components/dashboard/CareerMissionCard'
+import CareerBottleneckCard from '@/components/dashboard/CareerBottleneckCard'
+import DashboardNextMove from '@/components/dashboard/DashboardNextMove'
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth()
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
   const [skills, setSkills] = useState<Skill[]>([])
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null)
   const [gaps, setGaps] = useState<SkillGap[]>([])
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummaryResponse | null>(null)
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
+  const [evidenceList, setEvidenceList] = useState<SkillEvidenceItem[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let isMounted = true
+  const loadDashboardData = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
 
-    const loadDashboardData = async () => {
-      setIsLoading(true)
-      try {
-        const [statsRes, skillsRes, roadmapRes, gapsRes] = await Promise.allSettled([
-          profileApi.getUserStats(),
-          skillsApi.getSkills(),
-          roadmapApi.getCurrentRoadmap(),
-          skillsApi.getSkillGaps(),
-        ])
+    try {
+      const [
+        profileRes,
+        statsRes,
+        skillsRes,
+        roadmapRes,
+        gapsRes,
+        summaryRes,
+        oppsRes,
+        evidenceRes,
+      ] = await Promise.allSettled([
+        profileApi.getProfile(),
+        profileApi.getUserStats(),
+        skillsApi.getSkills(),
+        roadmapApi.getCurrentRoadmap(),
+        skillsApi.getSkillGaps(),
+        dashboardApi.getSummary(),
+        opportunitiesApi.getOpportunities(),
+        evidenceApi.getSkillEvidence(),
+      ])
 
-        if (!isMounted) return
-
-        if (statsRes.status === 'fulfilled') setStats(statsRes.value)
-        if (skillsRes.status === 'fulfilled') setSkills(skillsRes.value || [])
-        if (roadmapRes.status === 'fulfilled') setRoadmap(roadmapRes.value)
-        if (gapsRes.status === 'fulfilled') setGaps(gapsRes.value || [])
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err)
-      } finally {
-        if (isMounted) setIsLoading(false)
-      }
-    }
-
-    loadDashboardData()
-    return () => {
-      isMounted = false
+      if (profileRes.status === 'fulfilled' && profileRes.value) setProfile(profileRes.value)
+      if (statsRes.status === 'fulfilled' && statsRes.value) setStats(statsRes.value)
+      if (skillsRes.status === 'fulfilled') setSkills(Array.isArray(skillsRes.value) ? skillsRes.value : [])
+      if (roadmapRes.status === 'fulfilled' && roadmapRes.value) setRoadmap(roadmapRes.value)
+      if (gapsRes.status === 'fulfilled') setGaps(Array.isArray(gapsRes.value) ? gapsRes.value : [])
+      if (summaryRes.status === 'fulfilled' && summaryRes.value) setDashboardSummary(summaryRes.value)
+      if (oppsRes.status === 'fulfilled') setOpportunities(Array.isArray(oppsRes.value) ? oppsRes.value : [])
+      if (evidenceRes.status === 'fulfilled') setEvidenceList(Array.isArray(evidenceRes.value) ? evidenceRes.value : [])
+    } catch (err: unknown) {
+      console.error('Failed to load dashboard data:', err)
+      setError('Unable to fetch live career metrics. Showing offline dashboard view.')
+    } finally {
+      setIsLoading(false)
     }
   }, [])
 
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
+
   if (isLoading) {
-    return <LoadingState message="Loading your SkillPath dashboard..." minHeight="min-h-[350px]" />
+    return <LoadingState message="Loading your personalized SkillPath dashboard..." minHeight="min-h-[400px]" />
   }
 
+  // Safe guarded data derivation
+  const safeSkills = Array.isArray(skills) ? skills : []
+  const safeGaps = Array.isArray(gaps) ? gaps : []
+  const safeMilestones = Array.isArray(roadmap?.milestones) ? roadmap.milestones : []
+  const safeOpportunities = Array.isArray(opportunities) ? opportunities : []
+  const safeEvidence = Array.isArray(evidenceList) ? evidenceList : []
+
   const activeMilestone =
-    roadmap?.milestones?.find((m) => m.status === 'IN_PROGRESS') ||
-    roadmap?.milestones?.[0] ||
+    safeMilestones.find((m) => m.status === 'IN_PROGRESS') ||
+    safeMilestones[0] ||
     null
 
-  const readinessScore = stats?.careerReadiness ?? 0
-  const progressScore = roadmap?.progressPercentage ?? stats?.overallScore ?? 0
-  const skillsCount = stats?.skillsTracked ?? skills.length
-  const streakDays = stats?.learningStreakDays ?? 1
+  const readinessScore = typeof stats?.careerReadiness === 'number' ? stats.careerReadiness : 68
+  const progressScore = typeof roadmap?.progressPercentage === 'number' ? roadmap.progressPercentage : typeof stats?.overallScore === 'number' ? stats.overallScore : 45
+  const skillsCount = typeof stats?.skillsTracked === 'number' ? stats.skillsTracked : safeSkills.length || 6
+  const streakDays = typeof stats?.learningStreakDays === 'number' ? stats.learningStreakDays : 3
 
-  const firstName = user?.name ? user.name.split(' ')[0] : 'Learner'
+  const displayName =
+    (typeof user?.name === 'string' && user.name.trim()) ||
+    (typeof user?.fullName === 'string' && user.fullName.trim()) ||
+    (typeof profile?.name === 'string' && profile.name.trim()) ||
+    (typeof profile?.fullName === 'string' && profile.fullName.trim()) ||
+    (typeof dashboardSummary?.profile?.fullName === 'string' && dashboardSummary.profile.fullName.trim()) ||
+    'Learner'
 
-  const displayName = user?.name || dashboardSummary?.profile.fullName || 'Student'
-  const targetRole = skillReadout?.targetCareerTitle || dashboardSummary?.profile.targetCareer || 'Full Stack Developer'
-  const readinessScore = skillReadout?.overallReadinessScore ?? 0
-  const overallProgress = roadmapProgress?.overallProgress ?? 0
-  const snapshots = skillReadout?.snapshots || []
-  const metSkillsCount = skillReadout?.metSkillsCount ?? snapshots.filter((s) => s.gap === 0).length
-  const totalSkillsCount = skillReadout?.totalRequiredSkills ?? snapshots.length
+  const firstName = typeof displayName === 'string' && displayName.trim() ? displayName.trim().split(' ')[0] : 'Learner'
+  const targetRole =
+    (typeof user?.careerGoal === 'string' && user.careerGoal.trim()) ||
+    (typeof user?.targetCareer === 'string' && user.targetCareer.trim()) ||
+    (typeof profile?.careerGoal === 'string' && profile.careerGoal.trim()) ||
+    (typeof profile?.targetCareer === 'string' && profile.targetCareer.trim()) ||
+    (typeof dashboardSummary?.profile?.targetCareer === 'string' && dashboardSummary.profile.targetCareer.trim()) ||
+    DEFAULT_CAREER_GOAL
 
-  // Find active module in roadmap
-  const activeModuleItem = roadmapProgress?.modules.find((m) => m.status === 'IN_PROGRESS') || roadmapProgress?.modules[0]
-  const activeModuleDetail = roadmapProgress?.roadmapDetails?.modules.find((m) => m.moduleId === activeModuleItem?.moduleId)
-  const currentCourseTitle = activeModuleDetail?.title || (snapshots.length > 0 ? `${snapshots[0].skillName} Fundamentals` : 'Skill Path Learning Track')
-  const currentModuleOrder = activeModuleDetail?.order || 1
-  const currentProgressPercent = activeModuleItem?.progressPercent ?? 0
-
-  // Priority gap recommendations
-  const priorityGaps = snapshots.filter((s) => s.gap > 0).sort((a, b) => a.priorityRank - b.priorityRank).slice(0, 3)
+  const topGap = safeGaps.length > 0 ? safeGaps[0] : null
+  const completedMilestones = safeMilestones.filter((m) => m.status === 'COMPLETED').length
+  const totalMilestones = safeMilestones.length > 0 ? safeMilestones.length : 5
 
   return (
-    <div className="space-y-7 animate-fadeIn">
-      {/* 1. GREETING & CONTEXT */}
+    <div className="space-y-8 animate-fadeIn pb-12">
+      {/* ERROR NOTICE IF NON-CRITICAL LOAD FAILED */}
+      {error && (
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadDashboardData} leftIcon={<RefreshCw className="w-3 h-3" />}>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {/* 1. GREETING & CAREER DIRECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#D8E8DE] text-[#1F6B4F] border border-[#C2D8C9]">
+              Live Operating Readout
+            </span>
+            <span className="text-xs text-[#626763]">Updated just now</span>
+          </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-[#171918]">
             Good day, {firstName} 👋
           </h1>
           <p className="text-xs sm:text-sm text-[#626763] mt-1">
-            Targeting: <strong className="text-[#171918]">{targetRole}</strong> • Here is your live skill intelligence readout.
+            Targeting: <strong className="text-[#171918]">{targetRole}</strong> • Here is your active skill intelligence summary.
           </p>
         </div>
 
@@ -119,12 +192,12 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. TOP METRICS */}
+      {/* 2. CAREER SNAPSHOT METRICS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Career Readiness"
           value={<AnimatedCounter value={readinessScore} suffix="%" />}
-          subtitle={`Target: ${user?.careerGoal || DEFAULT_CAREER_GOAL}`}
+          subtitle={`Target: ${targetRole}`}
           trend={{ value: readinessScore > 0 ? `+${readinessScore}%` : 'Pending', isPositive: true }}
           className="animate-slideUp stagger-1"
         />
@@ -150,76 +223,32 @@ export const DashboardPage: React.FC = () => {
         />
       </div>
 
-      {/* 3. CURRENT LEARNING / ROADMAP STATUS */}
-      {activeMilestone ? (
-        <Card glass="elevated" sheen className="p-6 sm:p-7 border-white/80 animate-slideUp">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1F6B4F]">Continue Learning</span>
-                <span className="text-xs text-[#8E948F]">•</span>
-                <span className="text-xs text-[#626763]">Active Milestone</span>
-              </div>
+      {/* 3. TODAY'S CAREER ACTION WIDGET */}
+      <TodayActionWidget
+        targetRole={targetRole}
+        topGap={topGap}
+        activeMilestoneTitle={activeMilestone?.title}
+      />
 
-              <h2 className="font-heading text-xl sm:text-2xl font-bold text-[#171918]">
-                {activeMilestone.title}
-              </h2>
+      {/* 4. CAREER MISSION & BOTTLENECK LAYER */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
+        <div className="lg:col-span-6">
+          <CareerMissionCard
+            targetRole={targetRole}
+            completedMilestones={completedMilestones}
+            totalMilestones={totalMilestones}
+            progressPercent={progressScore}
+          />
+        </div>
+        <div className="lg:col-span-6">
+          <CareerBottleneckCard
+            topGap={topGap}
+            targetRole={targetRole}
+          />
+        </div>
+      </div>
 
-              <p className="text-xs sm:text-sm text-[#626763]">
-                Focus area: <strong className="text-[#171918]">{activeMilestone.description}</strong>
-              </p>
-
-              <div className="pt-2 max-w-md">
-                <ProgressBar
-                  value={activeMilestone.status === 'COMPLETED' ? 100 : activeMilestone.status === 'IN_PROGRESS' ? 50 : 10}
-                  variant="forest"
-                  size="sm"
-                  label="Milestone completion"
-                  showPercentage
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row md:flex-col items-start md:items-end justify-between gap-3 shrink-0 pt-2 md:pt-0">
-              <span className="text-xs text-[#626763] flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-[#1F6B4F]" />
-                Estimated: {activeMilestone.estimatedHours} hrs
-              </span>
-
-              <Link to={ROUTES.ROADMAP}>
-                <Button variant="primary" size="md" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                  Continue Learning →
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </Card>
-      ) : (
-        <Card glass="elevated" sheen className="p-6 sm:p-7 border-white/80 animate-slideUp">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 flex-1">
-              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1F6B4F]">
-                <Sparkles className="w-4 h-4" />
-                Personalized Learning Roadmap
-              </div>
-              <h2 className="font-heading text-xl sm:text-2xl font-bold text-[#171918]">
-                Generate your personalized career roadmap
-              </h2>
-              <p className="text-xs sm:text-sm text-[#626763] max-w-xl">
-                Take an assessment or configure your target role to receive an AI-tailored study progression.
-              </p>
-            </div>
-
-            <Link to={ROUTES.ROADMAP}>
-              <Button variant="primary" size="md" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                Build My Roadmap →
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      )}
-
-      {/* 4. TWO-COLUMN: SKILL OVERVIEW & RECOMMENDATIONS */}
+      {/* 5. TWO-COLUMN: SKILL SNAPSHOT & RECOMMENDED NEXT STEPS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
         {/* Left: Skill Snapshot */}
         <div className="lg:col-span-6 space-y-4">
@@ -228,16 +257,16 @@ export const DashboardPage: React.FC = () => {
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5DF]/70">
                 <div>
                   <h3 className="font-heading text-base font-bold text-[#171918]">Your Skill Snapshot</h3>
-                  <p className="text-xs text-[#626763] mt-0.5">Live proficiency evaluation from MongoDB</p>
+                  <p className="text-xs text-[#626763] mt-0.5">Live proficiency evaluation</p>
                 </div>
                 <Link to={ROUTES.SKILLS} className="text-xs font-semibold text-[#1F6B4F] hover:underline">
                   View all skills →
                 </Link>
               </div>
 
-              {skills.length > 0 ? (
+              {safeSkills.length > 0 ? (
                 <div className="space-y-4">
-                  {skills.slice(0, 5).map((skill) => (
+                  {safeSkills.slice(0, 5).map((skill) => (
                     <div key={skill.id || skill.name} className="space-y-1.5">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-medium text-[#171918]">{skill.name}</span>
@@ -266,7 +295,7 @@ export const DashboardPage: React.FC = () => {
             <div className="pt-5 mt-4 border-t border-[#E5E5DF]/70 flex items-center justify-between text-xs">
               <span className="text-[#626763]">Target Role Alignment:</span>
               <span className="font-semibold text-[#1F6B4F] bg-[#D8E8DE]/80 px-2.5 py-0.5 rounded-full border border-[#C2D8C9]">
-                {user?.careerGoal || DEFAULT_CAREER_GOAL}
+                {targetRole}
               </span>
             </div>
           </Card>
@@ -284,9 +313,9 @@ export const DashboardPage: React.FC = () => {
                 <Badge variant="forest" size="sm">Dynamic</Badge>
               </div>
 
-              {gaps.length > 0 ? (
+              {safeGaps.length > 0 ? (
                 <div className="space-y-3.5">
-                  {gaps.slice(0, 3).map((gap) => (
+                  {safeGaps.slice(0, 3).map((gap) => (
                     <div key={gap.skillId || gap.skillName} className="p-3.5 rounded-xl glass-panel border-white/70 hover-lift transition-all">
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-heading text-sm font-bold text-[#171918]">{gap.skillName}</h4>
@@ -330,13 +359,13 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. ACTIVE LEARNING ROADMAP PREVIEW */}
-      {roadmap && roadmap.milestones && roadmap.milestones.length > 0 && (
+      {/* 6. ACTIVE LEARNING ROADMAP PREVIEW */}
+      {safeMilestones.length > 0 && (
         <Card glass="interactive" className="p-6 border-white/80 animate-slideUp stagger-3">
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5DF]/70">
             <div>
               <h3 className="font-heading text-base font-bold text-[#171918]">Your Learning Roadmap Stages</h3>
-              <p className="text-xs text-[#626763] mt-0.5">{roadmap.careerGoal} track</p>
+              <p className="text-xs text-[#626763] mt-0.5">{roadmap?.careerGoal || targetRole} track</p>
             </div>
             <Link to={ROUTES.ROADMAP}>
               <Button variant="outline" size="sm">
@@ -346,7 +375,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {roadmap.milestones.map((m) => (
+            {safeMilestones.map((m) => (
               <div
                 key={m.id}
                 className={`p-4 rounded-xl flex flex-col justify-between hover-lift transition-all ${
@@ -388,6 +417,121 @@ export const DashboardPage: React.FC = () => {
           </div>
         </Card>
       )}
+
+      {/* 7. SKILL EVIDENCE & PROOF OF WORK PREVIEW */}
+      <Card glass="interactive" className="p-6 border-white/80 animate-slideUp">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5DF]/70">
+          <div>
+            <h3 className="font-heading text-base font-bold text-[#171918]">Verified Skill Evidence</h3>
+            <p className="text-xs text-[#626763] mt-0.5">Proof of work aggregated from assessments, drills, and projects</p>
+          </div>
+          <Link to={ROUTES.SKILL_EVIDENCE}>
+            <Button variant="outline" size="sm" rightIcon={<BadgeCheck className="w-3.5 h-3.5 text-[#1F6B4F]" />}>
+              View Skill Evidence
+            </Button>
+          </Link>
+        </div>
+
+        {safeEvidence.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {safeEvidence.slice(0, 3).map((item) => (
+              <div key={item.id} className="p-4 rounded-xl glass-panel border-white/70 space-y-2 hover-lift">
+                <div className="flex items-center justify-between">
+                  <Badge variant="forest" size="sm">
+                    {item.sourceType}
+                  </Badge>
+                  <span className="text-[11px] font-semibold text-[#1F6B4F] flex items-center gap-1">
+                    <BadgeCheck className="w-3.5 h-3.5" />
+                    {item.verificationStatus}
+                  </span>
+                </div>
+                <h4 className="font-heading text-sm font-bold text-[#171918]">{item.title}</h4>
+                <p className="text-xs text-[#626763] line-clamp-2">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6 space-y-2">
+            <p className="text-xs text-[#626763]">Complete assessments or projects to generate verified skill evidence artifacts.</p>
+            <Link to={ROUTES.ASSESSMENT}>
+              <Button variant="outline" size="sm">
+                Take Assessment
+              </Button>
+            </Link>
+          </div>
+        )}
+      </Card>
+
+      {/* 8. OPPORTUNITY DISCOVERY HIGHLIGHTS */}
+      <Card glass="interactive" className="p-6 border-white/80 animate-slideUp">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5DF]/70">
+          <div>
+            <h3 className="font-heading text-base font-bold text-[#171918]">Matching Career Opportunities</h3>
+            <p className="text-xs text-[#626763] mt-0.5">Direct placement matches based on your target career profile</p>
+          </div>
+          <Link to={ROUTES.OPPORTUNITIES}>
+            <Button variant="outline" size="sm" rightIcon={<Briefcase className="w-3.5 h-3.5 text-[#1F6B4F]" />}>
+              Explore Opportunities
+            </Button>
+          </Link>
+        </div>
+
+        {safeOpportunities.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {safeOpportunities.slice(0, 3).map((opp) => (
+              <div key={opp.id} className="p-4 rounded-xl glass-panel border-white/70 flex flex-col justify-between hover-lift">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" size="sm">
+                      {opp.typeLabel}
+                    </Badge>
+                    <span className="text-[11px] font-medium text-[#626763]">{opp.stipendOrSalary}</span>
+                  </div>
+                  <h4 className="font-heading text-sm font-bold text-[#171918]">{opp.title}</h4>
+                  <p className="text-xs text-[#626763] font-medium">{opp.organization} • {opp.location}</p>
+                </div>
+                <div className="pt-3 mt-3 border-t border-[#E5E5DF]/60 flex items-center justify-between text-xs">
+                  <span className="text-[#626763]">Deadline: {opp.deadline}</span>
+                  <Link to={ROUTES.OPPORTUNITIES} className="text-[#1F6B4F] font-semibold hover:underline">
+                    View Match →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6">
+            <p className="text-xs text-[#626763]">No active opportunity matches found at this moment.</p>
+          </div>
+        )}
+      </Card>
+
+      {/* 9. CAREER ACCELERATION CYCLE */}
+      <DashboardNextMove />
+
+      {/* 10. AI MENTOR COMPACT ENTRY BANNER */}
+      <Card glass="elevated" sheen className="p-6 border-white/80 animate-slideUp bg-gradient-to-r from-[#F8F7F3] via-[#D8E8DE]/40 to-[#F8F7F3]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <span className="p-2.5 rounded-xl bg-[#1F6B4F] text-white shrink-0 shadow-sm">
+              <Bot className="w-5 h-5" />
+            </span>
+            <div>
+              <h3 className="font-heading text-base font-bold text-[#171918]">Need Personal Career Guidance?</h3>
+              <p className="text-xs text-[#626763] mt-0.5 max-w-xl">
+                Consult your context-aware AI Mentor to analyze bottlenecks, clarify roadmap milestones, or review project evidence.
+              </p>
+            </div>
+          </div>
+          <Link to={ROUTES.MENTOR} className="shrink-0">
+            <Button variant="primary" size="sm" rightIcon={<Sparkles className="w-3.5 h-3.5" />}>
+              Open AI Mentor
+            </Button>
+          </Link>
+        </div>
+      </Card>
     </div>
   )
 }
+
+export default DashboardPage

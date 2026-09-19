@@ -8,6 +8,17 @@ export const ROUTES = {
 
   // Student / Authenticated Routes
   DASHBOARD: '/dashboard',
+  TODAY: '/today',
+  CAREER_MISSION: '/career-mission',
+  CHALLENGES: '/challenges',
+  SKILL_EVIDENCE: '/skill-evidence',
+  ACHIEVEMENTS: '/achievements',
+  CAREER_PASSPORT: '/career-passport',
+  CAREER_LEAGUE: '/career-league',
+  SKILL_BATTLES: '/skill-battles',
+  SQUADS: '/squads',
+  OPPORTUNITIES: '/opportunities',
+  NOTIFICATIONS: '/notifications',
   ONBOARDING: '/onboarding',
   PROFILE: '/profile',
   SKILLS: '/skills',

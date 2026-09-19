@@ -18,6 +18,17 @@ import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
 
 // Authenticated Student Pages
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
+import { TodayActionPage } from '@/pages/today/TodayActionPage'
+import { CareerMissionPage } from '@/pages/career/CareerMissionPage'
+import { ChallengesPage } from '@/pages/challenges/ChallengesPage'
+import { SkillEvidencePage } from '@/pages/progress/SkillEvidencePage'
+import { AchievementsPage } from '@/pages/progress/AchievementsPage'
+import { CareerPassportPage } from '@/pages/progress/CareerPassportPage'
+import { CareerLeaguePage } from '@/pages/community/CareerLeaguePage'
+import { SkillBattlesPage } from '@/pages/community/SkillBattlesPage'
+import { SquadsPage } from '@/pages/community/SquadsPage'
+import { OpportunitiesPage } from '@/pages/opportunities/OpportunitiesPage'
+import { NotificationsPage } from '@/pages/notifications/NotificationsPage'
 import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { SkillsPage } from '@/pages/skills/SkillsPage'
 import { SkillGapPage } from '@/pages/skills/SkillGapPage'
@@ -86,7 +97,7 @@ const AdminEntryRoute: React.FC = () => {
   }
 
   // If authenticated as an administrator, direct to Admin Dashboard
-  if (user?.role === 'admin') {
+  if (user?.role && String(user.role).toLowerCase() === 'admin') {
     return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
   }
 
@@ -125,6 +136,17 @@ export const AppRoutes: React.FC = () => {
         }
       >
         <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
+        <Route path={ROUTES.TODAY} element={<TodayActionPage />} />
+        <Route path={ROUTES.CAREER_MISSION} element={<CareerMissionPage />} />
+        <Route path={ROUTES.CHALLENGES} element={<ChallengesPage />} />
+        <Route path={ROUTES.SKILL_EVIDENCE} element={<SkillEvidencePage />} />
+        <Route path={ROUTES.ACHIEVEMENTS} element={<AchievementsPage />} />
+        <Route path={ROUTES.CAREER_PASSPORT} element={<CareerPassportPage />} />
+        <Route path={ROUTES.CAREER_LEAGUE} element={<CareerLeaguePage />} />
+        <Route path={ROUTES.SKILL_BATTLES} element={<SkillBattlesPage />} />
+        <Route path={ROUTES.SQUADS} element={<SquadsPage />} />
+        <Route path={ROUTES.OPPORTUNITIES} element={<OpportunitiesPage />} />
+        <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
         <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
         <Route path={ROUTES.SKILLS} element={<SkillsPage />} />
         <Route path={ROUTES.SKILL_GAP} element={<SkillGapPage />} />

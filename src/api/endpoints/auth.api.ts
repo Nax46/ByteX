@@ -4,30 +4,64 @@ import { UserProfile } from '@/types/user.types'
 
 /**
  * Auth API Module
- * NOTE FOR BACKEND TEAM:
- * Wire finalized authentication endpoints here.
+ * Directly interfaces with backend Express authentication routes.
  */
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    // Endpoint contract placeholder: POST /auth/login
-    const res = await apiClient.post<AuthResponse, LoginCredentials>('/auth/login', credentials)
-    return res.data
+    const res = await apiClient.post<any, LoginCredentials>('/auth/login', credentials)
+    const data = res.data?.data || res.data
+    const rawUser = data?.user || data
+    const rawRole = rawUser?.role ? String(rawUser.role).toLowerCase() : 'student'
+    const user: UserProfile = {
+      ...rawUser,
+      id: rawUser?._id || rawUser?.id || `user_${Date.now()}`,
+      name: rawUser?.fullName || rawUser?.name || 'Learner',
+      fullName: rawUser?.fullName || rawUser?.name || 'Learner',
+      email: rawUser?.email || credentials.email,
+      role: (rawRole === 'admin' ? 'admin' : rawRole === 'mentor' ? 'mentor' : 'student') as 'student' | 'admin' | 'mentor',
+      careerGoal: rawUser?.targetCareer || rawUser?.careerGoal || 'Full Stack Developer',
+      targetCareer: rawUser?.targetCareer || rawUser?.careerGoal || 'Full Stack Developer',
+    }
+    return { user, token: data?.token || '' }
   },
 
   register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-    // Endpoint contract placeholder: POST /auth/register
-    const res = await apiClient.post<AuthResponse, RegisterCredentials>('/auth/register', credentials)
-    return res.data
+    const res = await apiClient.post<any, RegisterCredentials>('/auth/register', credentials)
+    const data = res.data?.data || res.data
+    const rawUser = data?.user || data
+    const rawRole = rawUser?.role ? String(rawUser.role).toLowerCase() : 'student'
+    const user: UserProfile = {
+      ...rawUser,
+      id: rawUser?._id || rawUser?.id || `user_${Date.now()}`,
+      name: rawUser?.fullName || rawUser?.name || credentials.name,
+      fullName: rawUser?.fullName || rawUser?.name || credentials.name,
+      email: rawUser?.email || credentials.email,
+      role: (rawRole === 'admin' ? 'admin' : rawRole === 'mentor' ? 'mentor' : 'student') as 'student' | 'admin' | 'mentor',
+      careerGoal: rawUser?.targetCareer || rawUser?.careerGoal || 'Full Stack Developer',
+      targetCareer: rawUser?.targetCareer || rawUser?.careerGoal || 'Full Stack Developer',
+    }
+    return { user, token: data?.token || '' }
   },
 
   logout: async (): Promise<void> => {
-    // Endpoint contract placeholder: POST /auth/logout
-    await apiClient.post<void>('/auth/logout')
+    // JWT Bearer token authentication session is terminated client-side via storageService.clearSession()
+    return Promise.resolve()
   },
 
   getCurrentUser: async (): Promise<UserProfile> => {
-    const res = await apiClient.get<{ user: UserProfile } | UserProfile>('/auth/me')
-    const dataAny = res.data as any
-    return dataAny?.user || dataAny
+    const res = await apiClient.get<any>('/auth/me')
+    const data = res.data?.data || res.data
+    const rawUser = data?.user || data
+    const rawRole = rawUser?.role ? String(rawUser.role).toLowerCase() : 'student'
+    return {
+      ...rawUser,
+      id: rawUser?._id || rawUser?.id || 'user_me',
+      name: rawUser?.fullName || rawUser?.name || 'Learner',
+      fullName: rawUser?.fullName || rawUser?.name || 'Learner',
+      email: rawUser?.email || '',
+      role: (rawRole === 'admin' ? 'admin' : rawRole === 'mentor' ? 'mentor' : 'student') as 'student' | 'admin' | 'mentor',
+      careerGoal: rawUser?.targetCareer || rawUser?.careerGoal || 'Full Stack Developer',
+      targetCareer: rawUser?.targetCareer || rawUser?.careerGoal || 'Full Stack Developer',
+    }
   },
 }

@@ -9,5 +9,19 @@ export interface RecommendedProject {
   skillsReinforced: string[]
   estimatedHours: number
   githubStarterUrl?: string
+  architectureOverview?: string
+  learningObjectives?: string[]
+  category?: string
   status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED'
 }
+
+export interface ProjectRecommendation {
+  project: RecommendedProject
+  relevanceScore: number
+  recommendationReason: string
+  primarySkillName: string
+  targetSkillGap: number
+  priorityScore: number
+  reinforcedSkillNames: string[]
+}
+

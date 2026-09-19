@@ -5,11 +5,12 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import { LoadingState } from '@/components/common/LoadingState'
 import { Modal } from '@/components/ui/Modal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { assessmentApi } from '@/api/endpoints/assessment.api'
 import { AssessmentQuestion, AssessmentResult } from '@/types/assessment.types'
+import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import {
   CheckCircle2,
@@ -26,20 +27,29 @@ import {
   Maximize2,
   Minimize2,
   AlertTriangle,
+  AlertCircle,
+  Briefcase,
 } from 'lucide-react'
+import { DEFAULT_CAREER_GOAL } from '@/data/demo.student'
 
 const SECONDS_PER_QUESTION = 45
 const MAX_VIOLATIONS = 3
 
 export const AssessmentPage: React.FC = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const targetRole = user?.careerGoal || user?.targetCareer || DEFAULT_CAREER_GOAL
+
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [hasStarted, setHasStarted] = useState<boolean>(false)
   const [currentIdx, setCurrentIdx] = useState<number>(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
-  const [submissionResult, setSubmissionResult] = useState<AssessmentResult | null>(null)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState<boolean>(false)
+
   const [startTime] = useState<number>(() => Date.now())
 
   // Proctoring & Security State
@@ -84,6 +94,7 @@ export const AssessmentPage: React.FC = () => {
   const handleForceSubmit = useCallback(async (violations: number) => {
     if (isSubmittingRef.current) return
     setIsSubmitting(true)
+    setSubmissionError(null)
     const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000))
     try {
       const res = await assessmentApi.submitAssessment({
@@ -93,73 +104,92 @@ export const AssessmentPage: React.FC = () => {
         tabSwitches: violations,
         violations,
       })
-      setSubmissionResult(res)
-    } catch (err) {
-      console.error('Failed to force submit assessment:', err)
-    } finally {
-      setIsSubmitting(false)
-      setShowViolationModal(false)
       if (document.fullscreenElement) {
         document.exitFullscreen?.().catch(() => {})
       }
+      navigate(ROUTES.ASSESSMENT_RESULTS, { state: { result: res } })
+    } catch (err) {
+      console.error('Failed to force submit assessment:', err)
+      setSubmissionError('Automatic submission failed. Your answers have been preserved. Please try submitting again.')
+    } finally {
+      setIsSubmitting(false)
+      setShowViolationModal(false)
     }
-  }, [answers, startTime])
+  }, [answers, startTime, navigate])
 
   // Normal Submission
-  const handleFinalSubmit = useCallback(async (currentAnswers: Record<string, string>) => {
+  const handleFinalSubmit = useCallback(async () => {
     if (isSubmittingRef.current) return
     setIsSubmitting(true)
+    setSubmissionError(null)
+    setShowSubmitConfirm(false)
     const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000))
     try {
       const res = await assessmentApi.submitAssessment({
         assessmentId: 'diag_assessment',
-        answers: currentAnswers,
+        answers,
         timeSpentSeconds,
         tabSwitches: violationsCountRef.current,
         violations: violationsCountRef.current,
       })
-      setSubmissionResult(res)
-    } catch (err) {
-      console.error('Failed to submit assessment:', err)
-    } finally {
-      setIsSubmitting(false)
       if (document.fullscreenElement) {
         document.exitFullscreen?.().catch(() => {})
       }
+      navigate(ROUTES.ASSESSMENT_RESULTS, { state: { result: res } })
+    } catch (err) {
+      console.error('Failed to submit assessment:', err)
+      setSubmissionError('Failed to submit assessment. Your answers are preserved. Please click Try Again.')
+    } finally {
+      setIsSubmitting(false)
     }
-  }, [startTime])
+  }, [answers, startTime, navigate])
 
-  // Next Question or Submit
-  const handleNext = useCallback(async () => {
+  const currentQ = questions[currentIdx]
+  const qKey = currentQ ? (currentQ.id || currentQ._id || String(currentIdx)) : ''
+  const selectedChoice = currentQ ? answers[qKey] : null
+
+  // Next Question or Open Confirm Modal
+  const handleNext = useCallback(() => {
+    setValidationError(null)
+    if (!selectedChoice) {
+      setValidationError('Please select an answer before proceeding.')
+      return
+    }
+
     if (currentIdx < questions.length - 1) {
       setCurrentIdx((prev) => prev + 1)
       setTimeLeft(SECONDS_PER_QUESTION)
     } else {
-      await handleFinalSubmit(answers)
+      setShowSubmitConfirm(true)
     }
-  }, [currentIdx, questions.length, handleFinalSubmit, answers])
+  }, [currentIdx, questions.length, selectedChoice])
 
   // Per-Question Countdown Timer
   useEffect(() => {
-    if (!hasStarted || submissionResult || isSubmitting || showViolationModal) return
+    if (!hasStarted || isSubmitting || showViolationModal || showSubmitConfirm) return
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          // Time expired for this question: auto-advance
-          handleNext()
-          return SECONDS_PER_QUESTION
+          // Time expired for this question: auto-advance or open confirm
+          if (currentIdx < questions.length - 1) {
+            setCurrentIdx((idx) => idx + 1)
+            return SECONDS_PER_QUESTION
+          } else {
+            setShowSubmitConfirm(true)
+            return 0
+          }
         }
         return prev - 1
       })
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [hasStarted, submissionResult, isSubmitting, showViolationModal, handleNext])
+  }, [hasStarted, isSubmitting, showViolationModal, showSubmitConfirm, currentIdx, questions.length])
 
   // Trigger a Violation Strike
   const triggerViolation = useCallback((reason: string) => {
-    if (!hasStarted || submissionResult || isSubmittingRef.current) return
+    if (!hasStarted || isSubmittingRef.current) return
 
     setLatestViolationReason(reason)
     const nextCount = violationsCountRef.current + 1
@@ -170,20 +200,18 @@ export const AssessmentPage: React.FC = () => {
     } else {
       setShowViolationModal(true)
     }
-  }, [hasStarted, submissionResult, handleForceSubmit])
+  }, [hasStarted, handleForceSubmit])
 
   // Anti-Screenshot & Tab Switch Detection
   useEffect(() => {
-    if (!hasStarted || submissionResult || isSubmitting) return
+    if (!hasStarted || isSubmitting) return
 
-    // 1. Tab visibility change
     const handleVisibilityChange = () => {
       if (document.hidden || document.visibilityState === 'hidden') {
         triggerViolation('Tab switch detected! You navigated away from the active assessment tab.')
       }
     }
 
-    // 2. Window blur (switching monitors / apps / snipping overlay)
     const handleWindowBlur = () => {
       setIsWindowBlurred(true)
       triggerViolation('Screen focus lost! Navigating outside the assessment window is restricted.')
@@ -193,53 +221,40 @@ export const AssessmentPage: React.FC = () => {
       setIsWindowBlurred(false)
     }
 
-    // 3. Fullscreen exit detection
     const handleFullscreenChange = () => {
       const inFull = Boolean(document.fullscreenElement)
       setIsFullscreen(inFull)
-      if (!inFull && hasStarted && !submissionResult && !isSubmittingRef.current) {
+      if (!inFull && hasStarted && !isSubmittingRef.current) {
         triggerViolation('Fullscreen exited! Proctored assessments must remain in full screen.')
       }
     }
 
-    // 4. Keyboard Shortcuts for Screenshot, Print, Copy, DevTools
     const handleKeyDown = (e: KeyboardEvent) => {
-      // PrintScreen
       if (e.key === 'PrintScreen') {
         e.preventDefault()
         flashScreenshotToast('PrintScreen capture blocked under test integrity rules.')
         return
       }
-
-      // Ctrl+Shift+S or Cmd+Shift+S (Snipping Tool)
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
         e.preventDefault()
         flashScreenshotToast('Snipping Tool shortcut blocked.')
         return
       }
-
-      // Mac screenshot combos: Cmd+Shift+3/4/5
       if (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(e.key)) {
         e.preventDefault()
         flashScreenshotToast('Screen recording / screenshot shortcut blocked.')
         return
       }
-
-      // Print: Ctrl+P / Cmd+P
       if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault()
         flashScreenshotToast('Printing exam questions is disabled.')
         return
       }
-
-      // Copy: Ctrl+C / Cmd+C
       if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
         e.preventDefault()
         flashScreenshotToast('Copying question text is disabled.')
         return
       }
-
-      // View Source or DevTools: Ctrl+U, F12, Ctrl+Shift+I
       if (
         e.key === 'F12' ||
         ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) ||
@@ -264,7 +279,7 @@ export const AssessmentPage: React.FC = () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       window.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [hasStarted, submissionResult, isSubmitting, triggerViolation])
+  }, [hasStarted, isSubmitting, triggerViolation])
 
   const flashScreenshotToast = (msg: string) => {
     setScreenshotToast(msg)
@@ -287,24 +302,28 @@ export const AssessmentPage: React.FC = () => {
         await document.documentElement.requestFullscreen?.()
         setIsFullscreen(true)
       } catch {
-        // Browser rejected or permission denied; proceed anyway
+        // Fullscreen rejected or denied
       }
     }
     setHasStarted(true)
     setCurrentIdx(0)
     setTimeLeft(SECONDS_PER_QUESTION)
     setViolationsCount(0)
+    setValidationError(null)
   }
 
   const handleSelectOption = (optionId: string) => {
     if (!currentQ) return
+    const key = currentQ.id || currentQ._id || String(currentIdx)
     setAnswers((prev) => ({
       ...prev,
-      [currentQ.id]: optionId,
+      [key]: optionId,
     }))
+    setValidationError(null)
   }
 
   const handlePrev = () => {
+    setValidationError(null)
     if (currentIdx > 0) {
       setCurrentIdx((prev) => prev - 1)
       setTimeLeft(SECONDS_PER_QUESTION)
@@ -316,26 +335,16 @@ export const AssessmentPage: React.FC = () => {
     }
   }
 
-  const handleRestart = () => {
-    setHasStarted(false)
-    setCurrentIdx(0)
-    setAnswers({})
-    setSubmissionResult(null)
-    setViolationsCount(0)
-    setShowViolationModal(false)
-    setTimeLeft(SECONDS_PER_QUESTION)
-  }
-
   if (isLoading) {
     return <LoadingState message="Loading diagnostic questions..." minHeight="min-h-[350px]" />
   }
 
-  if (questions.length === 0 && !submissionResult) {
+  if (questions.length === 0) {
     return (
       <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn py-4">
         <PageHeader
           title="Skill Assessment"
-          subtitle="Quick diagnostic evaluations to gauge practical ability and calibrate your personal learning roadmap."
+          subtitle="Diagnostic evaluations measuring your practical technical capabilities for your target career."
           breadcrumbs={[
             { label: 'Dashboard', href: ROUTES.DASHBOARD },
             { label: 'Assessment' },
@@ -345,20 +354,26 @@ export const AssessmentPage: React.FC = () => {
           <HelpCircle className="w-12 h-12 text-[#1F6B4F] mx-auto opacity-75" />
           <h3 className="font-heading text-lg font-bold text-[#171918]">No assessment questions available</h3>
           <p className="text-xs text-[#626763] max-w-md mx-auto">
-            Assessment questions for your selected domain are currently being prepared by the curriculum system.
+            Assessment questions for your selected domain are currently being prepared. Select or change your target career to explore matching tracks.
           </p>
-          <Link to={ROUTES.DASHBOARD}>
-            <Button variant="outline" size="sm">
-              Return to Dashboard
-            </Button>
-          </Link>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link to={ROUTES.CAREERS}>
+              <Button variant="outline" size="sm">
+                Explore Careers
+              </Button>
+            </Link>
+            <Link to={ROUTES.DASHBOARD}>
+              <Button variant="primary" size="sm">
+                Return to Dashboard
+              </Button>
+            </Link>
+          </div>
         </Card>
       </div>
     )
   }
 
-  const currentQ = questions[currentIdx]
-  const selectedChoice = currentQ ? answers[currentQ.id] : null
+  const answeredCount = Object.keys(answers).length
   const progressPercent = currentQ ? Math.round(((currentIdx + 1) / questions.length) * 100) : 100
   const timerPercent = Math.round((timeLeft / SECONDS_PER_QUESTION) * 100)
 
@@ -375,40 +390,64 @@ export const AssessmentPage: React.FC = () => {
         </div>
       )}
 
+      {/* Target Career Context Header */}
       <PageHeader
         title="Diagnostic Skill Assessment"
-        subtitle="Calibrate your verified abilities across core engineering benchmarks with real-time proctoring."
+        subtitle={`Measuring your practical capabilities for your target career: ${targetRole}`}
         breadcrumbs={[
           { label: 'Dashboard', href: ROUTES.DASHBOARD },
           { label: 'Assessment' },
         ]}
       />
 
-      {/* 1. Pre-Assessment Briefing / Proctoring Agreement Screen */}
-      {!hasStarted && !submissionResult && (
+      {/* 1. Pre-Assessment Briefing / Career Context Anchor */}
+      {!hasStarted && (
         <Card className="p-6 sm:p-8 bg-white border-[#E5E5DF] shadow-md space-y-6 animate-fadeIn">
+          {/* Target Career Anchor Badge */}
+          <div className="p-4 rounded-xl bg-[#D8E8DE]/50 border border-[#1F6B4F]/30 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#1F6B4F] text-white flex items-center justify-center shrink-0">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#1F6B4F] block">
+                  Target Career Benchmark
+                </span>
+                <h3 className="font-heading text-base font-bold text-[#171918]">
+                  {targetRole} Diagnostic
+                </h3>
+              </div>
+            </div>
+
+            <Link to={ROUTES.CAREERS}>
+              <Button variant="outline" size="sm" className="text-xs">
+                Change Career
+              </Button>
+            </Link>
+          </div>
+
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl bg-[#1F6B4F]/10 border border-[#1F6B4F]/20 text-[#1F6B4F] flex items-center justify-center shrink-0">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
               <h2 className="font-heading text-xl font-bold text-[#171918]">
-                Proctored Assessment Instructions
+                Proctored Assessment Guidelines
               </h2>
               <p className="text-xs text-[#626763] mt-1">
-                Please review the integrity guidelines below before beginning your examination.
+                Please review the evaluation rules below before starting your diagnostic exam.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
             <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1.5">
               <div className="flex items-center gap-2 text-xs font-bold text-[#171918]">
                 <Clock className="w-4 h-4 text-[#1F6B4F]" />
                 <span>Fixed Question Timer</span>
               </div>
               <p className="text-[11px] text-[#626763] leading-relaxed">
-                You have <strong>{SECONDS_PER_QUESTION} seconds</strong> per question. When the timer expires, your response is locked and the exam automatically advances.
+                You have <strong>{SECONDS_PER_QUESTION} seconds</strong> per question. When timer expires, current response is stored and exam advances.
               </p>
             </div>
 
@@ -418,27 +457,27 @@ export const AssessmentPage: React.FC = () => {
                 <span>Anti-Screenshot Protection</span>
               </div>
               <p className="text-[11px] text-[#626763] leading-relaxed">
-                Screenshots, screen snipping tools, copy shortcuts, and print keys are blocked to preserve evaluation integrity.
+                Screenshots, snipping shortcuts, copy commands, and print keys are restricted to protect evaluation integrity.
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1.5">
               <div className="flex items-center gap-2 text-xs font-bold text-[#171918]">
                 <EyeOff className="w-4 h-4 text-[#E7A84B]" />
-                <span>Tab & Screen Switch Lock</span>
+                <span>Tab & Window Lock</span>
               </div>
               <p className="text-[11px] text-[#626763] leading-relaxed">
-                Navigating away from this tab or minimizing the window triggers violation strikes. Reaching <strong>3 strikes</strong> automatically submits your test.
+                Navigating away from this tab triggers violation strikes. Reaching <strong>3 strikes</strong> automatically submits your test.
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1.5">
               <div className="flex items-center gap-2 text-xs font-bold text-[#171918]">
                 <Award className="w-4 h-4 text-[#1F6B4F]" />
-                <span>Accurate Skill Calibration</span>
+                <span>Career Skill Calibration</span>
               </div>
               <p className="text-[11px] text-[#626763] leading-relaxed">
-                Your score and personalized roadmap adjustments are computed directly from verified answer keys across {questions.length} questions.
+                Your score calibrates your skill matrix and calculates your top career bottleneck for {targetRole}.
               </p>
             </div>
           </div>
@@ -454,7 +493,7 @@ export const AssessmentPage: React.FC = () => {
               size="md"
               onClick={() => handleStartExam(false)}
             >
-              Start in Standard Mode
+              Start Standard Mode
             </Button>
             <Button
               variant="primary"
@@ -462,14 +501,14 @@ export const AssessmentPage: React.FC = () => {
               leftIcon={<Maximize2 className="w-4 h-4" />}
               onClick={() => handleStartExam(true)}
             >
-              Start in Fullscreen Proctored Mode
+              Start Fullscreen Proctored Mode
             </Button>
           </div>
         </Card>
       )}
 
       {/* 2. Active Assessment Question Card */}
-      {hasStarted && !submissionResult && currentQ && (
+      {hasStarted && currentQ && (
         <Card className="p-6 sm:p-8 bg-white border-[#E5E5DF] shadow-xl relative overflow-hidden space-y-6">
           {/* Out-of-Focus Privacy Shield */}
           {isWindowBlurred && (
@@ -492,11 +531,10 @@ export const AssessmentPage: React.FC = () => {
 
           {/* Top Proctoring Status Header */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#E5E5DF]">
-            {/* Left: Security indicators */}
             <div className="flex items-center gap-2">
               <Badge variant="forest" size="sm" className="flex items-center gap-1.5 font-semibold">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Proctored Exam Active</span>
+                <span>Proctored Exam • {targetRole}</span>
               </Badge>
 
               <Badge
@@ -509,7 +547,6 @@ export const AssessmentPage: React.FC = () => {
               </Badge>
             </div>
 
-            {/* Right: Timer & Fullscreen Toggle */}
             <div className="flex items-center gap-3">
               <div
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-mono font-bold transition-colors ${
@@ -535,12 +572,30 @@ export const AssessmentPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Submission error alert */}
+          {submissionError && (
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{submissionError}</span>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                isLoading={isSubmitting}
+                onClick={handleFinalSubmit}
+              >
+                Try Again
+              </Button>
+            </div>
+          )}
+
           {/* Question Progression Bar & Per-Question Timer Bar */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-[#1F6B4F] flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-[#1F6B4F] animate-pulse" />
-                Question {currentIdx + 1} of {questions.length}
+                Question {currentIdx + 1} of {questions.length} ({answeredCount} answered)
               </span>
               <span className="text-[#626763] font-medium truncate max-w-xs text-right">
                 {currentQ.category} • {currentQ.difficulty}
@@ -548,7 +603,6 @@ export const AssessmentPage: React.FC = () => {
             </div>
             <ProgressBar value={progressPercent} size="sm" variant="forest" />
 
-            {/* Question countdown line */}
             <div className="w-full bg-[#F1EFEA] h-1 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-1000 ease-linear ${
@@ -560,9 +614,9 @@ export const AssessmentPage: React.FC = () => {
           </div>
 
           {/* Question Content */}
-          <div key={currentQ.id} className="space-y-5 animate-fadeIn">
+          <div key={qKey} className="space-y-5 animate-fadeIn">
             <h3 className="font-heading text-lg sm:text-xl font-bold text-[#171918] leading-snug">
-              {currentQ.text}
+              {currentQ.text || currentQ.question}
             </h3>
 
             {currentQ.codeSnippet && (
@@ -571,15 +625,24 @@ export const AssessmentPage: React.FC = () => {
               </pre>
             )}
 
+            {/* Validation Notice */}
+            {validationError && (
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>{validationError}</span>
+              </div>
+            )}
+
             {/* Answer Choices */}
             <div className="space-y-3 pt-1">
               {currentQ.options?.map((opt, optIdx) => {
-                const isSelected = selectedChoice === opt.id
+                const optId = opt.id || opt.optionId || String(optIdx)
+                const isSelected = selectedChoice === optId
                 return (
                   <button
-                    key={opt.id || optIdx}
+                    key={optId}
                     type="button"
-                    onClick={() => handleSelectOption(opt.id)}
+                    onClick={() => handleSelectOption(optId)}
                     className={`w-full text-left p-4 rounded-xl transition-all duration-150 flex items-start justify-between gap-4 cursor-pointer select-none ${
                       isSelected
                         ? 'bg-[#D8E8DE]/60 border-2 border-[#1F6B4F] text-[#171918] shadow-xs'
@@ -636,95 +699,18 @@ export const AssessmentPage: React.FC = () => {
         </Card>
       )}
 
-      {/* 3. Completed State with Accurate Real Submitted Results */}
-      {submissionResult && (
-        <Card className="p-8 sm:p-12 text-center bg-white border-[#E5E5DF] space-y-7 shadow-xl animate-fadeIn">
-          <div className="relative inline-flex items-center justify-center">
-            <div className="w-16 h-16 rounded-full bg-[#D8E8DE] text-[#1F6B4F] flex items-center justify-center border border-[#C2D8C9]">
-              <Award className="w-8 h-8 text-[#1F6B4F]" />
-            </div>
-            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E7A84B] text-white flex items-center justify-center text-xs shadow-xs">
-              <Sparkles className="w-3 h-3" />
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            <div className="inline-block px-3.5 py-1 rounded-full bg-[#D8E8DE]/60 text-[#1F6B4F] text-xs font-bold uppercase tracking-wider">
-              Diagnostic Complete
-            </div>
-            <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[#171918]">
-              Assessment Verified & Evaluated
-            </h2>
-            <p className="text-sm text-[#626763] max-w-md mx-auto leading-relaxed">
-              Your responses have been evaluated against verified curriculum answer keys. Your demonstrated score and skill gaps have been recorded.
-            </p>
-          </div>
-
-          {/* Metrics Summary from API */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left max-w-xl mx-auto pt-2">
-            <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1">
-              <span className="text-[11px] text-[#626763] font-medium">Demonstrated Score</span>
-              <div className="font-heading text-2xl font-bold text-[#1F6B4F] flex items-baseline gap-1">
-                <AnimatedCounter value={submissionResult.score} suffix="%" />
-              </div>
-              <p className="text-[11px] text-[#1F6B4F] font-semibold">
-                {submissionResult.correctQuestions} of {submissionResult.totalQuestions} correct
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1">
-              <span className="text-[11px] text-[#626763] font-medium">Proctoring Status</span>
-              <div className="font-heading text-sm font-bold pt-1">
-                {submissionResult.integrityStatus === 'VERIFIED' ? (
-                  <span className="text-[#1F6B4F]">Verified Clean</span>
-                ) : submissionResult.integrityStatus === 'WARNING_ISSUED' ? (
-                  <span className="text-amber-600">Warnings Noted</span>
-                ) : (
-                  <span className="text-red-600">Violation Strike</span>
-                )}
-              </div>
-              <p className="text-[11px] text-[#626763]">
-                {submissionResult.violations || 0} violation strike(s)
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8F7F3] border border-[#E5E5DF] space-y-1">
-              <span className="text-[11px] text-[#626763] font-medium">Identified Gap</span>
-              <div className="font-heading text-xs font-bold text-[#171918] truncate pt-1">
-                {submissionResult.identifiedGaps?.[0] || 'Core Mastery'}
-              </div>
-              <p className="text-[11px] text-[#626763]">Roadmap updated</p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
-            <Button
-              variant="outline"
-              size="md"
-              leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-              onClick={handleRestart}
-            >
-              Retake Assessment
-            </Button>
-
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => navigate(ROUTES.ASSESSMENT_RESULTS, { state: { result: submissionResult } })}
-              rightIcon={<ArrowRight className="w-4 h-4" />}
-            >
-              View Full Skill Report
-            </Button>
-
-            <Link to={ROUTES.ROADMAP}>
-              <Button variant="secondary" size="md">
-                Go to Roadmap
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      )}
+      {/* 3. Final Submission Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showSubmitConfirm}
+        onClose={() => setShowSubmitConfirm(false)}
+        onConfirm={handleFinalSubmit}
+        title="Submit Skill Assessment?"
+        description={`You have answered ${answeredCount} of ${questions.length} questions for your ${targetRole} diagnostic. Once submitted, your scores will calibrate your skill matrix and learning roadmap.`}
+        confirmText="Confirm & Submit"
+        cancelText="Continue Assessment"
+        variant="info"
+        isLoading={isSubmitting}
+      />
 
       {/* 4. Tab / Screen Switch Proctoring Violation Warning Modal */}
       <Modal
@@ -764,3 +750,5 @@ export const AssessmentPage: React.FC = () => {
     </div>
   )
 }
+
+export default AssessmentPage

@@ -157,21 +157,21 @@ describe('CareerSkill Junction Model & Uniqueness', () => {
 describe('Foundation Seed Idempotency', () => {
   it('should execute seed idempotently without throwing errors or duplicating data', async () => {
     const firstRun = await seedFoundationData();
-    expect(firstRun.skillsProcessed).toBe(9);
-    expect(firstRun.careersProcessed).toBe(1);
-    expect(firstRun.careerSkillsProcessed).toBe(9);
+    expect(firstRun.skillsProcessed).toBe(38);
+    expect(firstRun.careersProcessed).toBe(7);
+    expect(firstRun.careerSkillsProcessed).toBe(59);
 
     const initialSkillCount = await SkillModel.countDocuments();
     const initialCareerCount = await CareerModel.countDocuments();
     const initialCareerSkillCount = await CareerSkillModel.countDocuments();
 
-    expect(initialSkillCount).toBe(9);
-    expect(initialCareerCount).toBe(1);
-    expect(initialCareerSkillCount).toBe(9);
+    expect(initialSkillCount).toBe(38);
+    expect(initialCareerCount).toBe(7);
+    expect(initialCareerSkillCount).toBe(59);
 
     // Second run
     const secondRun = await seedFoundationData();
-    expect(secondRun.skillsProcessed).toBe(9);
+    expect(secondRun.skillsProcessed).toBe(38);
 
     const postSkillCount = await SkillModel.countDocuments();
     const postCareerCount = await CareerModel.countDocuments();
@@ -182,3 +182,4 @@ describe('Foundation Seed Idempotency', () => {
     expect(postCareerSkillCount).toBe(initialCareerSkillCount);
   });
 });
+

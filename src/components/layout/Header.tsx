@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
+import { notificationsApi } from '@/api/endpoints/notifications.api'
 
 interface HeaderProps {
   onMobileMenuToggle: () => void
@@ -22,7 +23,24 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const { user, logout } = useAuth()
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState<number>(0)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    let isMounted = true
+    const loadUnreadCount = async () => {
+      try {
+        const summary = await notificationsApi.getSummary()
+        if (isMounted) setUnreadCount(summary.unreadCount)
+      } catch (e) {
+        console.warn('Failed to load unread count:', e)
+      }
+    }
+    loadUnreadCount()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -54,14 +72,19 @@ export const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
 
       {/* Right: Notifications & User profile */}
       <div className="flex items-center gap-3 sm:gap-4">
-        {/* Notification Bell */}
-        <button
+        {/* Notification Bell with Dynamic Unread Badge */}
+        <Link
+          to={ROUTES.NOTIFICATIONS}
           className="relative p-2 rounded-lg text-[#626763] hover:text-[#171918] hover:bg-[#F8F7F3] transition-colors"
           aria-label="Notifications"
         >
           <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#1F6B4F] ring-2 ring-white" />
-        </button>
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[#1F6B4F] ring-2 ring-white flex items-center justify-center text-[9px] font-bold text-white">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </Link>
 
         {/* User Profile Menu */}
         <div className="relative">
@@ -70,16 +93,16 @@ export const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
             className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-[#F8F7F3] transition-colors focus:outline-none cursor-pointer"
           >
             <Avatar
-              name={user?.name || 'Student'}
+              name={typeof user?.name === 'string' ? user.name : typeof user?.fullName === 'string' ? user.fullName : 'Student'}
               size="sm"
               status="online"
             />
             <div className="hidden lg:flex flex-col text-left">
               <span className="text-xs font-semibold text-[#171918] truncate max-w-[130px]">
-                {user?.name || 'Student'}
+                {typeof user?.name === 'string' ? user.name : typeof user?.fullName === 'string' ? user.fullName : 'Student'}
               </span>
               <span className="text-[11px] text-[#626763] truncate max-w-[130px]">
-                {user?.education?.degree || user?.careerGoal || 'Learner'}
+                {typeof user?.education === 'object' && user.education?.degree ? user.education.degree : typeof user?.education === 'string' ? user.education : user?.careerGoal || 'Learner'}
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-[#8E948F] hidden sm:block" />
@@ -149,3 +172,5 @@ export const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
     </header>
   )
 }
+
+export default Header

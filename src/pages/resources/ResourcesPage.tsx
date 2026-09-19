@@ -1,20 +1,34 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { ProgressBar } from '@/components/ui/ProgressBar'
 import { LoadingState } from '@/components/common/LoadingState'
+import { useAuth } from '@/hooks/useAuth'
 import { resourcesApi } from '@/api/endpoints/resources.api'
-import { LearningResource } from '@/types/resource.types'
+import { skillsApi } from '@/api/endpoints/skills.api'
+import { LearningResource, ResourceRecommendation } from '@/types/resource.types'
+import { SkillGap } from '@/types/skill.types'
 import { ROUTES } from '@/constants/routes'
-import { Search, ExternalLink, Clock, BookOpen, X, SlidersHorizontal } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Sparkles, Compass, Map, Target, Calendar, AlertTriangle, RefreshCw } from 'lucide-react'
 
-type SortOption = 'RECOMMENDED' | 'TITLE_ASC' | 'TITLE_DESC' | 'RATING_DESC'
+// Subcomponents
+import { CareerContextBanner } from '@/components/resources/CareerContextBanner'
+import { PrioritySkillSpotlight } from '@/components/resources/PrioritySkillSpotlight'
+import { RecommendedResourceCard } from '@/components/resources/RecommendedResourceCard'
+import { ResourceCard } from '@/components/resources/ResourceCard'
+import { ResourceFilters, SortOption } from '@/components/resources/ResourceFilters'
+import { ResourceEmptyState } from '@/components/resources/ResourceEmptyState'
 
 export const ResourcesPage: React.FC = () => {
+  const { user } = useAuth()
+  const careerGoal = user?.careerGoal || user?.targetCareer || 'Full Stack Developer'
+
   const [resources, setResources] = useState<LearningResource[]>([])
+  const [recommendations, setRecommendations] = useState<ResourceRecommendation[]>([])
+  const [skillGaps, setSkillGaps] = useState<SkillGap[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('')
@@ -23,41 +37,64 @@ export const ResourcesPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('ALL')
   const [sortBy, setSortBy] = useState<SortOption>('RECOMMENDED')
 
-  useEffect(() => {
-    let isMounted = true
-    const loadResources = async () => {
-      setIsLoading(true)
-      try {
-        const data = await resourcesApi.getResources()
-        if (isMounted) {
-          setResources(data || [])
-        }
-      } catch (err) {
-        console.error('Failed to load learning resources:', err)
-      } finally {
-        if (isMounted) setIsLoading(false)
-      }
-    }
+  const loadData = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const [gapsData, catalogData] = await Promise.all([
+        skillsApi.getSkillGaps().catch(() => []),
+        resourcesApi.getResources().catch(() => []),
+      ])
 
-    loadResources()
-    return () => {
-      isMounted = false
+      setSkillGaps(gapsData || [])
+      setResources(catalogData || [])
+
+      // Identify top priority skill gap if available
+      const topGap = gapsData && gapsData.length > 0
+        ? [...gapsData].sort((a, b) => b.gap - a.gap || (a.priority === 'HIGH' ? -1 : 1))[0]
+        : null
+
+      const recs = await resourcesApi.getRecommendedResources(topGap?.skillName)
+      setRecommendations(recs || [])
+    } catch (err: unknown) {
+      console.error('Failed to load learning resources intelligence:', err)
+      setError('Failed to load learning resources. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  useEffect(() => {
+    loadData()
   }, [])
 
-  const handleToggleCompleted = async (res: LearningResource) => {
-    const nextCompleted = !res.isCompleted
+  // Priority Focus Skill
+  const prioritySkill = useMemo(() => {
+    if (!skillGaps || skillGaps.length === 0) return null
+    return [...skillGaps].sort((a, b) => b.gap - a.gap || (a.priority === 'HIGH' ? -1 : 1))[0]
+  }, [skillGaps])
+
+  // Handle Mark Done / Toggle Completion
+  const handleToggleCompleted = async (resItem: LearningResource) => {
+    const nextCompleted = !resItem.isCompleted
     try {
-      await resourcesApi.markCompleted(res.id, nextCompleted)
+      await resourcesApi.markCompleted(resItem.id, nextCompleted)
       setResources((prev) =>
-        prev.map((r) => (r.id === res.id ? { ...r, isCompleted: nextCompleted } : r))
+        prev.map((r) => (r.id === resItem.id ? { ...r, isCompleted: nextCompleted } : r))
+      )
+      setRecommendations((prev) =>
+        prev.map((rec) =>
+          rec.resource.id === resItem.id
+            ? { ...rec, resource: { ...rec.resource, isCompleted: nextCompleted } }
+            : rec
+        )
       )
     } catch (err) {
       console.error('Failed to update resource completion:', err)
     }
   }
 
-  // Derived filter options
+  // Filter options derived from data
   const skillsList = useMemo(() => {
     const uniqueSkills = Array.from(new Set(resources.map((r) => r.skillTag).filter(Boolean)))
     return ['ALL', ...uniqueSkills]
@@ -70,7 +107,7 @@ export const ResourcesPage: React.FC = () => {
 
   const levelsList = ['ALL', 'Beginner', 'Intermediate', 'Advanced']
 
-  // Filter & Sort computation
+  // Filter & Sort Computation
   const filteredAndSortedResources = useMemo(() => {
     return resources
       .filter((item) => {
@@ -82,7 +119,8 @@ export const ResourcesPage: React.FC = () => {
           item.skillTag?.toLowerCase().includes(query) ||
           item.provider?.toLowerCase().includes(query)
 
-        const matchesSkill = selectedSkill === 'ALL' || item.skillTag === selectedSkill
+        const matchesSkill =
+          selectedSkill === 'ALL' || item.skillTag.toLowerCase() === selectedSkill.toLowerCase()
         const matchesLevel = selectedLevel === 'ALL' || item.level === selectedLevel
         const matchesType = selectedType === 'ALL' || item.type === selectedType
 
@@ -98,8 +136,8 @@ export const ResourcesPage: React.FC = () => {
         if (sortBy === 'RATING_DESC') {
           return (b.rating || 0) - (a.rating || 0)
         }
-        // RECOMMENDED: Completed or rated resources first
-        return (b.rating || 3) - (a.rating || 3)
+        // RECOMMENDED: Rating / completion priority
+        return (b.rating || 4) - (a.rating || 4)
       })
   }, [resources, searchQuery, selectedSkill, selectedLevel, selectedType, sortBy])
 
@@ -118,292 +156,177 @@ export const ResourcesPage: React.FC = () => {
     setSortBy('RECOMMENDED')
   }
 
+  const handleFilterByFocusSkill = (skillName: string) => {
+    if (selectedSkill.toLowerCase() === skillName.toLowerCase()) {
+      setSelectedSkill('ALL')
+    } else {
+      setSelectedSkill(skillName)
+    }
+  }
+
   if (isLoading) {
-    return <LoadingState message="Curating verified learning resources..." minHeight="min-h-[350px]" />
+    return <LoadingState message="Curating career & skill-gap aligned resources..." minHeight="min-h-[400px]" />
+  }
+
+  if (error) {
+    return (
+      <Card className="p-8 text-center space-y-4 max-w-lg mx-auto my-12 border-red-200 bg-red-50/50">
+        <AlertTriangle className="w-10 h-10 text-red-600 mx-auto" />
+        <h3 className="font-heading text-base font-bold text-red-900">{error}</h3>
+        <Button variant="primary" size="sm" onClick={loadData} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
+          Try Again
+        </Button>
+      </Card>
+    )
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-fadeIn py-2">
+    <div className="space-y-8 max-w-6xl mx-auto animate-fadeIn py-2">
       <PageHeader
-        title="Learning Resources"
-        subtitle="Handpicked official documentation, practical courses, articles, and reference manuals."
+        title="Learning Resources Intelligence"
+        subtitle="Targeted documentation, courses, articles, and practice modules selected for your active skill gaps and career roadmap."
         breadcrumbs={[
           { label: 'Dashboard', href: ROUTES.DASHBOARD },
           { label: 'Resources' },
         ]}
       />
 
-      {/* Structured Search & Filter Component (Task 10) */}
-      <Card className="p-5 sm:p-6 border-[#E5E5DF] bg-white shadow-xs space-y-4">
-        {/* Top: Search Area */}
-        <div className="space-y-1.5">
-          <label htmlFor="resource-search" className="block text-xs font-bold uppercase tracking-wider text-[#626763]">
-            Search
-          </label>
-          <div className="relative">
-            <Search className="w-4 h-4 text-[#8E948F] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              id="resource-search"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search resources by title, topic, or provider..."
-              className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg pl-10 pr-10 py-2.5 text-sm text-[#171918] placeholder-[#8E948F] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E948F] hover:text-[#171918] p-1 rounded-md"
-                aria-label="Clear search input"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+      {/* 1. Career Context Banner */}
+      <CareerContextBanner
+        careerGoal={careerGoal}
+        totalResourcesCount={resources.length}
+        recommendedCount={recommendations.length}
+        activeGapsCount={skillGaps.filter((g) => g.gap > 0).length}
+      />
+
+      {/* 2. Priority Skill Focus Spotlight */}
+      <PrioritySkillSpotlight
+        prioritySkill={prioritySkill}
+        onFilterByFocusSkill={handleFilterByFocusSkill}
+        isFilteredByFocusSkill={
+          !!prioritySkill && selectedSkill.toLowerCase() === prioritySkill.skillName.toLowerCase()
+        }
+      />
+
+      {/* 3. Recommended For You Section */}
+      {recommendations.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="space-y-0.5">
+              <h2 className="font-heading text-lg font-bold text-[#171918] flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#1F6B4F]" />
+                Recommended For You
+              </h2>
+              <p className="text-xs text-[#626763]">
+                Handpicked based on your verified skill gap scores and priority ranking.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs">
+              <Link to={ROUTES.TODAY}>
+                <Button variant="outline" size="sm" className="text-xs font-semibold" leftIcon={<Calendar className="w-3.5 h-3.5 text-[#1F6B4F]" />}>
+                  Start Today&apos;s Focus
+                </Button>
+              </Link>
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {recommendations.map((rec) => (
+              <RecommendedResourceCard
+                key={rec.resource.id}
+                recommendation={rec}
+                onToggleCompleted={handleToggleCompleted}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 4. Navigation & Cross-Page Integration Bar */}
+      <Card className="p-4 bg-[#F8F7F3] border-[#E5E5DF] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+        <div className="flex items-center gap-2 text-[#626763]">
+          <Compass className="w-4 h-4 text-[#1F6B4F] shrink-0" />
+          <span>
+            Connect resources to your <strong className="text-[#171918]">Learning Roadmap</strong> modules or inspect your <strong className="text-[#171918]">Skill Gap Report</strong>.
+          </span>
         </div>
 
-        {/* Filters Row: [ Skill ] [ Level ] [ Type ] [ Sort ] */}
-        <div className="pt-2 border-t border-[#E5E5DF]/70 space-y-2">
-          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#626763]">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-[#1F6B4F]" />
-            <span>Filters & Organization</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* 1. Skill Filter */}
-            <div className="space-y-1">
-              <label htmlFor="filter-skill" className="text-[11px] font-semibold text-[#626763]">
-                Skill Topic
-              </label>
-              <select
-                id="filter-skill"
-                value={selectedSkill}
-                onChange={(e) => setSelectedSkill(e.target.value)}
-                className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg px-3 py-2 text-xs font-medium text-[#171918] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
-              >
-                <option value="ALL">All Skills</option>
-                {skillsList
-                  .filter((s) => s !== 'ALL')
-                  .map((skill) => (
-                    <option key={skill} value={skill}>
-                      {skill}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            {/* 2. Level Filter */}
-            <div className="space-y-1">
-              <label htmlFor="filter-level" className="text-[11px] font-semibold text-[#626763]">
-                Skill Level
-              </label>
-              <select
-                id="filter-level"
-                value={selectedLevel}
-                onChange={(e) => setSelectedLevel(e.target.value)}
-                className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg px-3 py-2 text-xs font-medium text-[#171918] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
-              >
-                <option value="ALL">All Levels</option>
-                {levelsList
-                  .filter((l) => l !== 'ALL')
-                  .map((lvl) => (
-                    <option key={lvl} value={lvl}>
-                      {lvl}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            {/* 3. Type Filter */}
-            <div className="space-y-1">
-              <label htmlFor="filter-type" className="text-[11px] font-semibold text-[#626763]">
-                Resource Type
-              </label>
-              <select
-                id="filter-type"
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg px-3 py-2 text-xs font-medium text-[#171918] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
-              >
-                <option value="ALL">All Types</option>
-                {typesList
-                  .filter((t) => t !== 'ALL')
-                  .map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            {/* 4. Sort Order */}
-            <div className="space-y-1">
-              <label htmlFor="filter-sort" className="text-[11px] font-semibold text-[#626763]">
-                Sort By
-              </label>
-              <select
-                id="filter-sort"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="w-full bg-[#F8F7F3] border border-[#E5E5DF] rounded-lg px-3 py-2 text-xs font-medium text-[#171918] focus:outline-none focus:border-[#1F6B4F] focus:bg-white transition-colors"
-              >
-                <option value="RECOMMENDED">Recommended</option>
-                <option value="TITLE_ASC">Title (A - Z)</option>
-                <option value="TITLE_DESC">Title (Z - A)</option>
-                <option value="RATING_DESC">Highest Rated</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Info & Active Filter Tags Bar */}
-        <div className="pt-2 border-t border-[#E5E5DF]/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-[#171918]">
-              Showing {filteredAndSortedResources.length} of {resources.length} resources
-            </span>
-
-            {selectedSkill !== 'ALL' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D8E8DE]/60 text-[#1F6B4F] text-[11px] font-medium">
-                Skill: {selectedSkill}
-                <button type="button" onClick={() => setSelectedSkill('ALL')} className="hover:text-black">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-
-            {selectedLevel !== 'ALL' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D8E8DE]/60 text-[#1F6B4F] text-[11px] font-medium">
-                Level: {selectedLevel}
-                <button type="button" onClick={() => setSelectedLevel('ALL')} className="hover:text-black">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-
-            {selectedType !== 'ALL' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D8E8DE]/60 text-[#1F6B4F] text-[11px] font-medium">
-                Type: {selectedType}
-                <button type="button" onClick={() => setSelectedType('ALL')} className="hover:text-black">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-          </div>
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetAllFilters}
-              className="text-xs text-[#1F6B4F] hover:underline font-semibold cursor-pointer shrink-0"
-            >
-              Reset Filters
-            </button>
-          )}
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+          <Link to={ROUTES.SKILL_GAP} className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="w-full text-xs font-semibold" leftIcon={<Target className="w-3.5 h-3.5" />}>
+              Skill Gap Report
+            </Button>
+          </Link>
+          <Link to={ROUTES.ROADMAP} className="w-full sm:w-auto">
+            <Button variant="primary" size="sm" className="w-full text-xs font-bold" rightIcon={<Map className="w-3.5 h-3.5" />}>
+              Roadmap Modules
+            </Button>
+          </Link>
         </div>
       </Card>
 
-      {/* Resource Cards Grid */}
-      {filteredAndSortedResources.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {filteredAndSortedResources.map((res, index) => {
-            const staggerClass =
-              index % 4 === 0 ? 'stagger-1' : index % 4 === 1 ? 'stagger-2' : index % 4 === 2 ? 'stagger-3' : 'stagger-4'
-
-            return (
-              <Card
-                key={res.id}
-                className={`p-5 sm:p-6 border-[#E5E5DF] bg-white flex flex-col justify-between space-y-4 hover-lift animate-slideUp ${staggerClass} group`}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="forest" size="sm">{res.skillTag || 'Curriculum'}</Badge>
-                      {res.level && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#E5E5DF] bg-[#F8F7F3] text-[#626763]">
-                          {res.level}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[11px] text-[#8E948F]">
-                      <span className="font-semibold text-[#626763]">{res.type}</span>
-                      <span>•</span>
-                      <span>{res.provider}</span>
-                    </div>
-                  </div>
-
-                  <h3 className="font-heading text-base font-bold text-[#171918] leading-snug group-hover:text-[#1F6B4F] transition-colors duration-200">
-                    {res.title}
-                  </h3>
-
-                  <p className="text-xs text-[#626763] leading-relaxed line-clamp-2">
-                    {res.description}
-                  </p>
-
-                  <div className="pt-1">
-                    <ProgressBar
-                      value={res.isCompleted ? 100 : 0}
-                      size="sm"
-                      variant="forest"
-                      label={res.isCompleted ? 'Completed' : 'Not completed'}
-                      showPercentage={res.isCompleted}
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-[#E5E5DF] flex items-center justify-between text-xs gap-2">
-                  <span className="text-[#626763] flex items-center gap-1.5 shrink-0">
-                    <Clock className="w-3.5 h-3.5 text-[#1F6B4F]" />
-                    {res.estimatedDuration || 'Self-paced'}
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleCompleted(res)}
-                      className="text-xs"
-                    >
-                      {res.isCompleted ? 'Mark Incomplete' : 'Mark Done'}
-                    </Button>
-                    <a
-                      href={res.url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F6B4F] rounded-lg"
-                    >
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        rightIcon={<ExternalLink className="w-3.5 h-3.5" />}
-                      >
-                        Open
-                      </Button>
-                    </a>
-                  </div>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-      ) : (
-        <Card className="p-8 sm:p-12 text-center space-y-4 bg-white border-[#E5E5DF]">
-          <BookOpen className="w-12 h-12 text-[#1F6B4F] mx-auto opacity-75" />
-          <h3 className="font-heading text-lg font-bold text-[#171918]">No resources match your filters</h3>
-          <p className="text-xs sm:text-sm text-[#626763] max-w-md mx-auto">
-            Try adjusting your search keywords, switching skill categories, or resetting filters to view all available materials.
+      {/* 5. Complete Resource Catalog with Structured Filters */}
+      <section className="space-y-4">
+        <div className="space-y-0.5">
+          <h2 className="font-heading text-lg font-bold text-[#171918]">
+            Resource Catalog
+          </h2>
+          <p className="text-xs text-[#626763]">
+            Browse all verified learning materials by topic, difficulty, or media type.
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetAllFilters}
-          >
-            Reset All Filters
-          </Button>
-        </Card>
-      )}
+        </div>
+
+        <ResourceFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedSkill={selectedSkill}
+          onSkillChange={setSelectedSkill}
+          skillsList={skillsList}
+          selectedLevel={selectedLevel}
+          onLevelChange={setSelectedLevel}
+          levelsList={levelsList}
+          selectedType={selectedType}
+          onTypeChange={setSelectedType}
+          typesList={typesList}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          totalCount={resources.length}
+          filteredCount={filteredAndSortedResources.length}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetAllFilters}
+        />
+
+        {/* Catalog Grid */}
+        {filteredAndSortedResources.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {filteredAndSortedResources.map((res, index) => {
+              const staggerClass =
+                index % 4 === 0
+                  ? 'stagger-1'
+                  : index % 4 === 1
+                  ? 'stagger-2'
+                  : index % 4 === 2
+                  ? 'stagger-3'
+                  : 'stagger-4'
+
+              return (
+                <ResourceCard
+                  key={res.id}
+                  resource={res}
+                  onToggleCompleted={handleToggleCompleted}
+                  staggerClass={staggerClass}
+                />
+              )
+            })}
+          </div>
+        ) : (
+          <ResourceEmptyState
+            hasFilters={hasActiveFilters}
+            onResetFilters={resetAllFilters}
+          />
+        )}
+      </section>
     </div>
   )
 }

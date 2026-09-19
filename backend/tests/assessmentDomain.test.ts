@@ -230,19 +230,19 @@ describe('Assessment Seed Idempotency', () => {
     await seedFoundationData();
     const firstRun = await seedAssessmentData();
 
-    expect(firstRun.assessmentsProcessed).toBe(1);
-    expect(firstRun.questionsProcessed).toBe(27); // 9 skills x 3 difficulty questions
-    expect(firstRun.skillsCoveredCount).toBe(9);
+    expect(firstRun.assessmentsProcessed).toBe(7);
+    expect(firstRun.questionsProcessed).toBe(56);
+    expect(firstRun.skillsCoveredCount).toBe(22);
 
     const initialAssessmentCount = await AssessmentModel.countDocuments();
     const initialQuestionCount = await QuestionModel.countDocuments();
 
-    expect(initialAssessmentCount).toBe(1);
-    expect(initialQuestionCount).toBe(27);
+    expect(initialAssessmentCount).toBe(7);
+    expect(initialQuestionCount).toBe(56);
 
     // Second Run
     const secondRun = await seedAssessmentData();
-    expect(secondRun.questionsProcessed).toBe(27);
+    expect(secondRun.questionsProcessed).toBe(56);
 
     const postAssessmentCount = await AssessmentModel.countDocuments();
     const postQuestionCount = await QuestionModel.countDocuments();
@@ -251,3 +251,4 @@ describe('Assessment Seed Idempotency', () => {
     expect(postQuestionCount).toBe(initialQuestionCount);
   });
 });
+

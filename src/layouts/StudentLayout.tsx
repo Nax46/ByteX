@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { MobileNav } from '@/components/layout/MobileNav'
+import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 
 export const StudentLayout: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -39,7 +40,9 @@ export const StudentLayout: React.FC = () => {
         <Header onMobileMenuToggle={() => setMobileMenuOpen(true)} />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          <Outlet />
+          <ErrorBoundary fallbackTitle="Dashboard Render Exception">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

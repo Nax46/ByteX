@@ -15,8 +15,22 @@ import { DEMO_USER_STATS } from '@/data/demo.dashboard'
 export const profileApi = {
   getProfile: async (): Promise<UserProfile> => {
     try {
-      const res = await apiClient.get<UserProfile>('/profile')
-      return res.data
+      const res = await apiClient.get<any>('/profile')
+      const raw = res.data?.data?.profile || res.data?.profile || res.data?.data || res.data
+      if (!raw) return DEMO_STUDENT
+
+      return {
+        id: raw.id || raw._id || raw.userId || DEMO_STUDENT.id,
+        name: raw.name || raw.fullName || DEMO_STUDENT.name,
+        email: raw.email || DEMO_STUDENT.email,
+        avatarUrl: raw.avatarUrl || DEMO_STUDENT.avatarUrl,
+        role: raw.role || DEMO_STUDENT.role,
+        careerGoal: raw.careerGoal || raw.targetCareer || DEMO_STUDENT.careerGoal,
+        targetCareer: raw.targetCareer || raw.careerGoal || DEMO_STUDENT.targetCareer,
+        education: typeof raw.education === 'object' ? raw.education : { institution: raw.college || raw.education },
+        bio: raw.bio,
+        createdAt: raw.createdAt,
+      }
     } catch {
       return DEMO_STUDENT
     }
