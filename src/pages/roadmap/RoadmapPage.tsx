@@ -10,7 +10,7 @@ import { Roadmap, RoadmapMilestone, MilestoneStatus } from '@/types/roadmap.type
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { Link } from 'react-router-dom'
-import { Clock, CheckCircle2, ArrowRight, ChevronDown, BookOpen, Check, Sparkles, Map } from 'lucide-react'
+import { Clock, CheckCircle2, ArrowRight, ChevronDown, BookOpen, Check, Sparkles, Map, Lock, AlertCircle } from 'lucide-react'
 import { DEFAULT_CAREER_GOAL } from '@/data/demo.student'
 
 export const RoadmapPage: React.FC = () => {
@@ -18,67 +18,88 @@ export const RoadmapPage: React.FC = () => {
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false)
+  const [updatingMilestoneId, setUpdatingMilestoneId] = useState<string | null>(null)
   const [expandedStage, setExpandedStage] = useState<string | null>(null)
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const loadRoadmap = async () => {
+    setIsLoading(true)
+    setErrorMsg(null)
+    try {
+      const data = await roadmapApi.getCurrentRoadmap()
+      setRoadmap(data || null)
+      const active = data?.milestones?.find((m) => m.status === 'IN_PROGRESS') || data?.milestones?.[0]
+      if (active) setExpandedStage(active.id)
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: string }).message)
+        : 'Failed to load your learning roadmap. Please check your connection and try again.'
+      setErrorMsg(msg)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    let isMounted = true
-    const loadRoadmap = async () => {
-      setIsLoading(true)
-      try {
-        const data = await roadmapApi.getCurrentRoadmap()
-        if (isMounted) {
-          setRoadmap(data || null)
-          // Default to first in-progress or first milestone expanded
-          const active = data?.milestones?.find((m) => m.status === 'IN_PROGRESS') || data?.milestones?.[0]
-          if (active) setExpandedStage(active.id)
-        }
-      } catch (err) {
-        console.error('Failed to load roadmap:', err)
-      } finally {
-        if (isMounted) setIsLoading(false)
-      }
-    }
-
     loadRoadmap()
-    return () => {
-      isMounted = false
-    }
   }, [])
 
   const handleGenerateRoadmap = async () => {
     setIsRegenerating(true)
+    setErrorMsg(null)
+    setFeedbackMsg(null)
     try {
       const newRoadmap = await roadmapApi.regenerateRoadmap()
       setRoadmap(newRoadmap)
+      setFeedbackMsg(`Adaptive roadmap (V${newRoadmap?.version || 1}) updated successfully based on your current skill profile!`)
       const active = newRoadmap?.milestones?.find((m) => m.status === 'IN_PROGRESS') || newRoadmap?.milestones?.[0]
       if (active) setExpandedStage(active.id)
-    } catch (err) {
-      console.error('Failed to generate roadmap:', err)
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: string }).message)
+        : 'Failed to adapt roadmap. Please ensure your student profile has a target career configured.'
+      setErrorMsg(msg)
     } finally {
       setIsRegenerating(false)
     }
   }
 
-  const handleToggleMilestone = async (milestone: RoadmapMilestone) => {
-    const nextStatus: MilestoneStatus = milestone.status === 'COMPLETED' ? 'IN_PROGRESS' : 'COMPLETED'
+  const handleStartMilestone = async (milestone: RoadmapMilestone) => {
+    setUpdatingMilestoneId(milestone.id)
+    setErrorMsg(null)
+    setFeedbackMsg(null)
     try {
-      await roadmapApi.updateMilestoneStatus(milestone.id, nextStatus)
-      setRoadmap((prev) => {
-        if (!prev) return null
-        const updated = prev.milestones.map((m) =>
-          m.id === milestone.id ? { ...m, status: nextStatus } : m
-        )
-        const completedCount = updated.filter((m) => m.status === 'COMPLETED').length
-        const pct = Math.round((completedCount / updated.length) * 100)
-        return {
-          ...prev,
-          milestones: updated,
-          progressPercentage: pct,
-        }
-      })
-    } catch (err) {
-      console.error('Failed to update milestone:', err)
+      await roadmapApi.startModule(milestone.id, roadmap?.id)
+      const fresh = await roadmapApi.getCurrentRoadmap()
+      setRoadmap(fresh)
+      setFeedbackMsg(`Started stage ${milestone.order}: "${milestone.title}". Good luck!`)
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: string }).message)
+        : 'Unable to start this stage. Ensure all prerequisite stages are completed first.'
+      setErrorMsg(msg)
+    } finally {
+      setUpdatingMilestoneId(null)
+    }
+  }
+
+  const handleCompleteMilestone = async (milestone: RoadmapMilestone) => {
+    setUpdatingMilestoneId(milestone.id)
+    setErrorMsg(null)
+    setFeedbackMsg(null)
+    try {
+      await roadmapApi.completeModule(milestone.id, roadmap?.id)
+      const fresh = await roadmapApi.getCurrentRoadmap()
+      setRoadmap(fresh)
+      setFeedbackMsg(`Completed stage ${milestone.order}: "${milestone.title}"! Next stage is now unlocked.`)
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: string }).message)
+        : 'Unable to mark stage completed. Please try again.'
+      setErrorMsg(msg)
+    } finally {
+      setUpdatingMilestoneId(null)
     }
   }
 
@@ -93,7 +114,11 @@ export const RoadmapPage: React.FC = () => {
   const milestones = roadmap?.milestones || []
   const completedStages = milestones.filter((m) => m.status === 'COMPLETED').length
   const totalStages = milestones.length
-  const progressPercent = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0
+  const progressPercent = typeof roadmap?.progressPercentage === 'number'
+    ? roadmap.progressPercentage
+    : totalStages > 0
+    ? Math.round((completedStages / totalStages) * 100)
+    : 0
   const activeMilestone = milestones.find((m) => m.status === 'IN_PROGRESS') || milestones[0]
 
   return (
@@ -108,9 +133,27 @@ export const RoadmapPage: React.FC = () => {
         ]}
       />
 
+      {errorMsg && (
+        <div className="p-4 rounded-xl bg-[#FDF2F2] border border-[#F8B4B4] text-xs font-semibold text-[#9B1C1C] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-[#C81E1E] shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadRoadmap} className="text-xs h-7">
+            Retry
+          </Button>
+        </div>
+      )}
+
       {feedbackMsg && (
-        <div className="p-4 rounded-xl bg-[#D8E8DE]/80 border border-[#C2D8C9] text-xs font-semibold text-[#1F6B4F]">
-          {feedbackMsg}
+        <div className="p-4 rounded-xl bg-[#D8E8DE]/80 border border-[#C2D8C9] text-xs font-semibold text-[#1F6B4F] flex items-center justify-between">
+          <span>{feedbackMsg}</span>
+          <button
+            onClick={() => setFeedbackMsg(null)}
+            className="text-[#1F6B4F] hover:text-[#171918] text-xs underline ml-2"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -119,16 +162,35 @@ export const RoadmapPage: React.FC = () => {
         <Card glass="elevated" sheen className="p-6 border-white/80 shadow-lg animate-slideUp">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
             <div>
-              <span className="text-xs font-semibold text-[#1F6B4F]">Track Progress</span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold text-[#1F6B4F]">Track Progress</span>
+                {roadmap?.version && (
+                  <Badge variant="outline" size="sm" className="text-[10px] font-mono">
+                    v{roadmap.version} Active
+                  </Badge>
+                )}
+              </div>
               <h3 className="font-heading text-lg font-bold text-[#171918]">
                 {completedStages} of {totalStages} Stages Completed
               </h3>
             </div>
-            {activeMilestone && (
-              <Badge variant="forest" size="md">
-                Active: {activeMilestone.title}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {activeMilestone && (
+                <Badge variant="forest" size="md">
+                  Active: {activeMilestone.title}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                isLoading={isRegenerating}
+                onClick={handleGenerateRoadmap}
+                leftIcon={<Sparkles className="w-3.5 h-3.5 text-[#1F6B4F]" />}
+                className="text-xs border-[#1F6B4F]/30 hover:bg-[#1F6B4F]/5 text-[#1F6B4F]"
+              >
+                Adapt with AI
+              </Button>
+            </div>
           </div>
           <ProgressBar value={progressPercent} size="md" variant="forest" showPercentage />
         </Card>
@@ -156,6 +218,8 @@ export const RoadmapPage: React.FC = () => {
                 >
                   {isCompleted ? (
                     <CheckCircle2 className="w-3.5 h-3.5" />
+                  ) : stage.status === 'LOCKED' ? (
+                    <Lock className="w-2.5 h-2.5 text-[#8E948F]" />
                   ) : (
                     <span className="text-[10px] font-bold">{stage.order}</span>
                   )}
@@ -244,14 +308,54 @@ export const RoadmapPage: React.FC = () => {
                     </div>
 
                     <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleMilestone(stage)}
-                        className="text-xs"
-                      >
-                        {isCompleted ? 'Mark Incomplete' : 'Mark Complete'}
-                      </Button>
+                      {isCompleted ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled
+                          className="text-xs text-[#1F6B4F] border-[#1F6B4F]/30 bg-[#1F6B4F]/5 cursor-default font-medium"
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1 text-[#1F6B4F]" />
+                          Completed
+                        </Button>
+                      ) : isNext ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          isLoading={updatingMilestoneId === stage.id}
+                          onClick={() => handleCompleteMilestone(stage)}
+                          className="text-xs shadow-xs"
+                        >
+                          Mark Complete
+                        </Button>
+                      ) : (
+                        (() => {
+                          const prevStage = milestones.find((m) => m.order === stage.order - 1)
+                          const isUnlocked = stage.order === 1 || prevStage?.status === 'COMPLETED'
+                          return isUnlocked ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              isLoading={updatingMilestoneId === stage.id}
+                              onClick={() => handleStartMilestone(stage)}
+                              className="text-xs text-[#1F6B4F] border-[#1F6B4F]/40 hover:bg-[#1F6B4F]/5 font-medium"
+                            >
+                              Start Stage
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              title="Complete prerequisite stages first"
+                              className="text-xs opacity-60 cursor-not-allowed text-[#8E948F] flex items-center gap-1"
+                            >
+                              <Lock className="w-3 h-3 text-[#8E948F]" />
+                              Locked
+                            </Button>
+                          )
+                        })()
+                      )}
                       <Link to={ROUTES.RESOURCES}>
                         <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
                           Resources →

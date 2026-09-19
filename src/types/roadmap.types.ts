@@ -1,4 +1,4 @@
-export type MilestoneStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+export type MilestoneStatus = 'NOT_STARTED' | 'LOCKED' | 'IN_PROGRESS' | 'COMPLETED'
 
 export interface RoadmapMilestone {
   id: string
@@ -10,6 +10,7 @@ export interface RoadmapMilestone {
   order: number
   resourcesCount: number
   projectsCount: number
+  progressPercent?: number
 }
 
 export interface Roadmap {
@@ -20,6 +21,8 @@ export interface Roadmap {
   progressPercentage: number
   milestones: RoadmapMilestone[]
   updatedAt: string
+  version?: number
+  isCurrent?: boolean
 }
 
 export interface IRoadmapProgressSummary {
