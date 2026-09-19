@@ -13,6 +13,7 @@ router.use(requireAuth);
 
 // GET /api/resources/recommended OR /api/intelligence/resources/recommended
 router.get('/recommended', getRecommendedResourcesHandler);
+router.get('/recommendations', getRecommendedResourcesHandler);
 
 // GET /api/resources OR /api/intelligence/resources
 router.get('/', getResourcesHandler);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -8,13 +8,14 @@ import { LoadingState } from '@/components/common/LoadingState'
 import { resourcesApi } from '@/api/endpoints/resources.api'
 import { LearningResource } from '@/types/resource.types'
 import { ROUTES } from '@/constants/routes'
-import { Search, ExternalLink, Clock, BookOpen, X, SlidersHorizontal } from 'lucide-react'
+import { Search, ExternalLink, Clock, BookOpen, X, SlidersHorizontal, AlertCircle } from 'lucide-react'
 
 type SortOption = 'RECOMMENDED' | 'TITLE_ASC' | 'TITLE_DESC' | 'RATING_DESC'
 
 export const ResourcesPage: React.FC = () => {
   const [resources, setResources] = useState<LearningResource[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('')
@@ -23,27 +24,25 @@ export const ResourcesPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('ALL')
   const [sortBy, setSortBy] = useState<SortOption>('RECOMMENDED')
 
-  useEffect(() => {
-    let isMounted = true
-    const loadResources = async () => {
-      setIsLoading(true)
-      try {
-        const data = await resourcesApi.getResources()
-        if (isMounted) {
-          setResources(data || [])
-        }
-      } catch (err) {
-        console.error('Failed to load learning resources:', err)
-      } finally {
-        if (isMounted) setIsLoading(false)
-      }
-    }
-
-    loadResources()
-    return () => {
-      isMounted = false
+  const loadResources = useCallback(async () => {
+    setIsLoading(true)
+    setErrorMsg(null)
+    try {
+      const data = await resourcesApi.getRecommendedResources()
+      setResources(data || [])
+    } catch (err: unknown) {
+      console.error('Failed to load learning resources:', err)
+      const message =
+        err instanceof Error ? err.message : 'Failed to load recommended learning resources from server.'
+      setErrorMsg(message)
+    } finally {
+      setIsLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    loadResources()
+  }, [loadResources])
 
   const handleToggleCompleted = async (res: LearningResource) => {
     const nextCompleted = !res.isCompleted
@@ -83,7 +82,8 @@ export const ResourcesPage: React.FC = () => {
           item.provider?.toLowerCase().includes(query)
 
         const matchesSkill = selectedSkill === 'ALL' || item.skillTag === selectedSkill
-        const matchesLevel = selectedLevel === 'ALL' || item.level === selectedLevel
+        const matchesLevel =
+          selectedLevel === 'ALL' || item.level?.toLowerCase() === selectedLevel.toLowerCase()
         const matchesType = selectedType === 'ALL' || item.type === selectedType
 
         return matchesSearch && matchesSkill && matchesLevel && matchesType
@@ -98,7 +98,10 @@ export const ResourcesPage: React.FC = () => {
         if (sortBy === 'RATING_DESC') {
           return (b.rating || 0) - (a.rating || 0)
         }
-        // RECOMMENDED: Completed or rated resources first
+        // RECOMMENDED: Sort by recommendation relevanceScore first, then rating
+        if (a.relevanceScore != null && b.relevanceScore != null) {
+          return b.relevanceScore - a.relevanceScore
+        }
         return (b.rating || 3) - (a.rating || 3)
       })
   }, [resources, searchQuery, selectedSkill, selectedLevel, selectedType, sortBy])
@@ -132,6 +135,18 @@ export const ResourcesPage: React.FC = () => {
           { label: 'Resources' },
         ]}
       />
+
+      {errorMsg && (
+        <div className="p-4 rounded-xl bg-[#FDF2F2] border border-[#F8B4B4] text-xs font-semibold text-[#9B1C1C] flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-[#C81E1E] shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadResources} className="text-xs h-7">
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Structured Search & Filter Component (Task 10) */}
       <Card className="p-5 sm:p-6 border-[#E5E5DF] bg-white shadow-xs space-y-4">
@@ -325,6 +340,11 @@ export const ResourcesPage: React.FC = () => {
                           {res.level}
                         </span>
                       )}
+                      {res.relevanceScore != null && (
+                        <Badge variant="outline" size="sm" className="text-[10px] text-[#1F6B4F] border-[#1F6B4F]/30 bg-[#1F6B4F]/5 font-mono">
+                          {Math.round(res.relevanceScore)}% Match
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 text-[11px] text-[#8E948F]">
@@ -388,6 +408,21 @@ export const ResourcesPage: React.FC = () => {
             )
           })}
         </div>
+      ) : resources.length === 0 ? (
+        <Card className="p-8 sm:p-12 text-center space-y-4 bg-white border-[#E5E5DF]">
+          <BookOpen className="w-12 h-12 text-[#1F6B4F] mx-auto opacity-75" />
+          <h3 className="font-heading text-lg font-bold text-[#171918]">No recommended resources found</h3>
+          <p className="text-xs sm:text-sm text-[#626763] max-w-md mx-auto">
+            Complete your diagnostic assessment or explore curriculum modules to receive personalized learning materials.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadResources}
+          >
+            Refresh Recommendations
+          </Button>
+        </Card>
       ) : (
         <Card className="p-8 sm:p-12 text-center space-y-4 bg-white border-[#E5E5DF]">
           <BookOpen className="w-12 h-12 text-[#1F6B4F] mx-auto opacity-75" />
