@@ -1,0 +1,41 @@
+services:
+  # 1. Backend Web Service (Node.js + Express API)
+  - type: web
+    name: ai-skillpath-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # 2. Frontend Web Service (React 19 + Vite 8 Static Site)
+  - type: web
+    name: ai-skillpath-frontend
+    env: static
+    rootDir: .
+    buildCommand: npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://ai-skillpath-backend.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: /api
+      - key: VITE_ENABLE_MOCK_FALLBACK
+        value: "false"
