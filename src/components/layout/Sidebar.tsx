@@ -16,6 +16,7 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -39,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed })
     { label: 'Learning Path', to: ROUTES.ROADMAP, icon: <Map className="w-4 h-4 shrink-0" /> },
     { label: 'Resources', to: ROUTES.RESOURCES, icon: <BookOpen className="w-4 h-4 shrink-0" /> },
     { label: 'Careers', to: ROUTES.CAREERS, icon: <Briefcase className="w-4 h-4 shrink-0" /> },
+    { label: 'Mentor Support', to: ROUTES.MENTOR, icon: <Users className="w-4 h-4 shrink-0" /> },
     { label: 'Progress', to: ROUTES.PROGRESS, icon: <TrendingUp className="w-4 h-4 shrink-0" /> },
     { label: 'Profile', to: ROUTES.PROFILE, icon: <User className="w-4 h-4 shrink-0" /> },
   ]

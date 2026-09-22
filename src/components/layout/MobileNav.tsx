@@ -14,6 +14,7 @@ import {
   User,
   Settings,
   X,
+  Users,
 } from 'lucide-react'
 
 interface MobileNavProps {
@@ -31,6 +32,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
     { label: 'Learning Path', to: ROUTES.ROADMAP, icon: <Map className="w-5 h-5" /> },
     { label: 'Resources', to: ROUTES.RESOURCES, icon: <BookOpen className="w-5 h-5" /> },
     { label: 'Careers', to: ROUTES.CAREERS, icon: <Briefcase className="w-5 h-5" /> },
+    { label: 'Mentor Support', to: ROUTES.MENTOR, icon: <Users className="w-5 h-5" /> },
     { label: 'Progress', to: ROUTES.PROGRESS, icon: <TrendingUp className="w-5 h-5" /> },
     { label: 'Profile', to: ROUTES.PROFILE, icon: <User className="w-5 h-5" /> },
     { label: 'Settings', to: ROUTES.SETTINGS, icon: <Settings className="w-5 h-5" /> },
