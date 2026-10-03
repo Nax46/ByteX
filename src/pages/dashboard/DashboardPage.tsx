@@ -73,24 +73,7 @@ export const DashboardPage: React.FC = () => {
   const streakDays = stats?.learningStreakDays ?? 1
 
   const firstName = user?.name ? user.name.split(' ')[0] : 'Learner'
-
-  const displayName = user?.name || dashboardSummary?.profile.fullName || 'Student'
-  const targetRole = skillReadout?.targetCareerTitle || dashboardSummary?.profile.targetCareer || 'Full Stack Developer'
-  const readinessScore = skillReadout?.overallReadinessScore ?? 0
-  const overallProgress = roadmapProgress?.overallProgress ?? 0
-  const snapshots = skillReadout?.snapshots || []
-  const metSkillsCount = skillReadout?.metSkillsCount ?? snapshots.filter((s) => s.gap === 0).length
-  const totalSkillsCount = skillReadout?.totalRequiredSkills ?? snapshots.length
-
-  // Find active module in roadmap
-  const activeModuleItem = roadmapProgress?.modules.find((m) => m.status === 'IN_PROGRESS') || roadmapProgress?.modules[0]
-  const activeModuleDetail = roadmapProgress?.roadmapDetails?.modules.find((m) => m.moduleId === activeModuleItem?.moduleId)
-  const currentCourseTitle = activeModuleDetail?.title || (snapshots.length > 0 ? `${snapshots[0].skillName} Fundamentals` : 'Skill Path Learning Track')
-  const currentModuleOrder = activeModuleDetail?.order || 1
-  const currentProgressPercent = activeModuleItem?.progressPercent ?? 0
-
-  // Priority gap recommendations
-  const priorityGaps = snapshots.filter((s) => s.gap > 0).sort((a, b) => a.priorityRank - b.priorityRank).slice(0, 3)
+  const targetRole = user?.careerGoal || DEFAULT_CAREER_GOAL
 
   return (
     <div className="space-y-7 animate-fadeIn">

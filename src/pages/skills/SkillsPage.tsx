@@ -19,9 +19,6 @@ export const SkillsPage: React.FC = () => {
   const [skills, setSkills] = useState<Skill[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
-  const [readout, setReadout] = useState<ISkillGapPriorityReadout | null>(null)
-  const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
