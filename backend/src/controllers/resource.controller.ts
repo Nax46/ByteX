@@ -22,7 +22,7 @@ export const getResourcesHandler = async (
       sendError(
         res,
         'Invalid resource query parameters',
-        parseResult.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+        parseResult.error.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`),
         400
       );
       return;

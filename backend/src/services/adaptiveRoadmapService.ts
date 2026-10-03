@@ -13,7 +13,7 @@ import {
  */
 export const shouldGenerateAdaptiveRoadmap = (
   latestAttemptId: string | null | undefined,
-  currentRoadmap: { generatedFromAssessmentAttemptId?: Types.ObjectId | null } | null | undefined,
+  currentRoadmap: any,
   force: boolean = false
 ): boolean => {
   if (!currentRoadmap) {

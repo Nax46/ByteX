@@ -27,3 +27,16 @@ export const CareerSkillCreateZodSchema = z.object({
   weight: z.number().min(0.0).max(1.0).default(1.0).optional(),
   prerequisites: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid prerequisite skillId format')).default([]).optional(),
 });
+
+export const ProjectQueryZodSchema = z.object({
+  skillId: z.string().optional(),
+  careerId: z.string().optional(),
+  difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+});
+
+export const ResourceQueryZodSchema = z.object({
+  skillId: z.string().optional(),
+  type: z.enum(['ARTICLE', 'VIDEO', 'COURSE', 'DOCUMENTATION', 'BOOK', 'PRACTICE', 'QUIZ']).optional(),
+  difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+});
+

@@ -287,7 +287,7 @@ export const getOrCreateRoadmapProgress = async (
 
   if (!progress) {
     const now = new Date();
-    const initialModules: IModuleProgressItem[] = roadmap.modules.map((m) => {
+    const initialModules: IModuleProgressItem[] = roadmap.modules.map((m: any) => {
       const isInitialActive = m.order === 1 || m.status === 'IN_PROGRESS';
       const isCompleted = m.status === 'COMPLETED';
 

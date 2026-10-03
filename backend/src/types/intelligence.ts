@@ -88,3 +88,104 @@ export interface IPriorityStrategy {
   calculatePriority(input: IPriorityInput): IPriorityResult;
 }
 
+export type ResourceType = 'ARTICLE' | 'VIDEO' | 'COURSE' | 'DOCUMENTATION' | 'BOOK' | 'PRACTICE' | 'QUIZ';
+export type ResourceDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+
+export interface IResource {
+  _id?: Types.ObjectId;
+  title: string;
+  slug: string;
+  description: string;
+  url: string;
+  type: ResourceType;
+  provider: string;
+  skillId: Types.ObjectId;
+  skillTag?: string;
+  difficulty: ResourceDifficulty;
+  estimatedDuration: string;
+  rating?: number;
+  authorOrInstructor?: string;
+  isPaid?: boolean;
+  tags?: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface IResourceRecommendation {
+  resource: IResource;
+  relevanceScore: number;
+  explanation?: string;
+  recommendationReason?: string;
+  skillName?: string;
+  targetSkillGap?: number;
+  priorityScore?: number;
+}
+
+export type ProjectDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+
+export interface IProject {
+  _id?: Types.ObjectId;
+  title: string;
+  slug: string;
+  description: string;
+  difficulty: ProjectDifficulty;
+  careerId?: Types.ObjectId;
+  skillId: Types.ObjectId;
+  skillsReinforced?: Types.ObjectId[];
+  technologies?: string[];
+  estimatedHours: number;
+  githubStarterUrl?: string;
+  architectureOverview?: string;
+  learningObjectives?: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface IProjectRecommendation {
+  project: IProject;
+  relevanceScore: number;
+  explanation?: string;
+  recommendationReason?: string;
+  primarySkillName?: string;
+  targetSkillGap?: number;
+  priorityScore?: number;
+  reinforcedSkillNames?: string[];
+}
+
+export type RoadmapStatus = 'ACTIVE' | 'ARCHIVED' | 'COMPLETED';
+export type RoadmapModuleStatus = 'LOCKED' | 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
+
+export interface IRoadmapModule {
+  moduleId: string;
+  skillId: Types.ObjectId;
+  title: string;
+  description?: string;
+  order: number;
+  targetLevel: number;
+  currentLevel?: number | null;
+  gapMagnitude: number;
+  priorityScore: number;
+  prerequisites?: Types.ObjectId[];
+  recommendedResourceIds?: Types.ObjectId[];
+  recommendedProjectIds?: Types.ObjectId[];
+  status: RoadmapModuleStatus;
+}
+
+export interface IRoadmap {
+  _id?: Types.ObjectId;
+  userId?: Types.ObjectId;
+  studentProfileId?: Types.ObjectId;
+  careerId: Types.ObjectId;
+  title?: string;
+  description?: string;
+  version: number;
+  isCurrent: boolean;
+  status: RoadmapStatus;
+  modules: IRoadmapModule[];
+  generatedFromAssessmentAttemptId?: Types.ObjectId | null;
+  generationReason?: 'INITIAL' | 'REASSESSMENT' | 'ADAPTIVE';
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+

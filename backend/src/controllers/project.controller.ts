@@ -22,7 +22,7 @@ export const getProjectsHandler = async (
       sendError(
         res,
         'Invalid project query parameters',
-        parseResult.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+        parseResult.error.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`),
         400
       );
       return;
